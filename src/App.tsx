@@ -19,17 +19,19 @@ import { Report } from "./types";
 import logoUrl from "./assets/images/multisectorial_logo_1779809299141.png";
 
 const CAPS_LIST = [
-  "CAPS N° 1 - Barrio San Martín",
-  "CAPS N° 2 - Barrio Estación",
-  "CAPS N° 3 - Barrio Catamarca",
-  "CAPS N° 4 - Barrio Dr. Montaña",
-  "CAPS N° 5 - Barrio Ombucito",
-  "CAPS N° 6 - Barrio Lomas",
-  "CAPS N° 7 - Barrio Palmar",
-  "CAPS N° 11 - Barrio 50 Viviendas",
-  "CAPS N° 12 - Barrio 100 Viviendas",
-  "CAPS Centro - Centro de Salud Municipal",
-  "Otro CAPS o Centro Municipal"
+  "CAPS N° 1 - Barrio Simeón Payba (Municipal)",
+  "CAPS N° 2 - Barrio 132 Viviendas (Municipal)",
+  "CAPS N° 3 - Barrio Hipódromo (Municipal)",
+  "CAPS N° 4 - Barrio La Terminal (Municipal)",
+  "CAPS N° 5 - Barrio Catamarca (Municipal)",
+  "CAPS N° 6 - Barrio Zapadores (Municipal)",
+  "CAPS N° 7 - Barrio Primavera (Municipal)",
+  "CAPS N° 7 Bis - Barrio Ombucito (5ª Sección) (Provincial)",
+  "CAPS N° 8 - Barrio Las Flores (Municipal)",
+  "CAPS N° 9 - Barrio Joaquín Madariaga (Provincial)",
+  "CAPS N° 10 - Barrio Raúl Alfonsín (Plurianual) (Municipal)",
+  "CAPS N° 11 - Barrio Esteban Alisio 630 (Secretaría de Salud) (Municipal)",
+  "CAPS N° 12 - Barrio Ponce (Provincial)"
 ];
 
 const PROBLEM_TYPES = [
@@ -202,7 +204,7 @@ export default function App() {
         
         {/* Top Citizen Header Bar */}
         <div className="border-b border-[#1c1c1c] px-6 py-3 flex flex-wrap justify-between items-center text-[10px] font-mono uppercase tracking-widest opacity-80 gap-2 bg-[#f4f1eb]">
-          <div>MESA GREMIAL • PASO DE LOS LIBRES</div>
+          <div>MESA DE LA ASAMBLEA • PASO DE LOS LIBRES</div>
           <div>ESTADO: EN DEFENSA DE LA SALUD PÚBLICA COLECTIVA</div>
           <div className="text-[#1c1c1c] font-bold">2026 • ACCIÓN COMUNITARIA</div>
         </div>
@@ -247,7 +249,7 @@ export default function App() {
                   DIRECCIÓN DE ENLACE SECRETO
                 </h3>
                 <p className="text-xs leading-relaxed opacity-90 italic">
-                  Tus datos se transmiten de forma confidencial y anónima directamente hacia el correo administrativo de control gremial.
+                  Tus datos se transmiten de forma confidencial y anónima directamente hacia el correo administrativo de control de la Asamblea.
                 </p>
               </div>
 
@@ -516,7 +518,7 @@ export default function App() {
                       )}
                     </button>
                     <p className="text-[9px] text-center font-mono text-slate-500 mt-2 tracking-tight">
-                      *Los reportes son procesados de forma autónoma por nuestro servidor y enviados secretamente a albertomartinwhite@gmail.com
+                      *Los reportes son procesados de forma autónoma por nuestro servidor y enviados confidencialmente de forma segura a la mesa de la Asamblea.
                     </p>
                   </div>
                 </form>
@@ -532,7 +534,7 @@ export default function App() {
                       ¡REGISTRO PROCESADO CON ÉXITO!
                     </h3>
                     <p className="text-sm text-[#4a4a4a] leading-relaxed max-w-lg mx-auto">
-                      La información ha sido guardada en los servidores gremiales de control y despachada herméticamente por email a la coordinación de la <strong className="text-black font-serif">Asamblea Multisectorial de Paso de los Libres</strong>.
+                      La información ha sido guardada en los servidores de control de la Asamblea y despachada herméticamente por email a la coordinación de la <strong className="text-black font-serif">Asamblea Multisectorial de Paso de los Libres</strong>.
                     </p>
                   </div>
 
@@ -565,10 +567,10 @@ export default function App() {
                       <button
                         type="button"
                         onClick={handleShareWhatsApp}
-                        className="w-full bg-[#25D366] hover:bg-[#1ebd59] text-white font-black py-4 px-6 uppercase tracking-wider text-xs transition-transform flex items-center justify-center gap-2 cursor-pointer shadow"
+                        className="w-full bg-gradient-to-r from-[#25D366] via-[#20ba59] to-[#128C7E] text-white font-black py-4.5 px-6 uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-lg animate-pulse ring-4 ring-[#25D366]/40 hover:scale-[1.02]"
                       >
-                        <Share2 className="w-4 h-4" />
-                        COMPARTIR REGISTRO POR WHATSAPP
+                        <Share2 className="w-5 h-5" />
+                        COMPARTIR REGISTRO POR WHATSAPP (ACCESO DIRECTO)
                       </button>
                     </div>
 
