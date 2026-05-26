@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import nodemailer from "nodemailer";
 
 const app = express();
 const PORT = 3000;
@@ -36,6 +37,28 @@ function writeReport(report: any) {
   }
 }
 
+// Nodemailer SMTP Transporter Lazy Initialization
+function getMailTransporter() {
+  const host = process.env.SMTP_HOST;
+  const port = process.env.SMTP_PORT || "587";
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  if (!host || !user || !pass) {
+    return null;
+  }
+
+  return nodemailer.createTransport({
+    host: host,
+    port: parseInt(port),
+    secure: port === "465",
+    auth: {
+      user: user,
+      pass: pass,
+    },
+  });
+}
+
 // Gemini lazy initialization
 let _ai: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
@@ -59,15 +82,15 @@ function getGeminiClient(): GoogleGenAI | null {
 // API: Get recent reports (for tracking / verification)
 app.get("/api/reports", (req, res) => {
   const reports = readReports();
-  // Return recent reports without exposes sensitive details
+  // Return recent reports without exposing sensitive details
   res.json({
     success: true,
     data: reports,
   });
 });
 
-// API: Submit a report (logs it & acts as hidden email dispatcher)
-app.post("/api/reports", (req, res) => {
+// API: Submit a report (logs it & acts as hidden email dispatcher using nodemailer)
+app.post("/api/reports", async (req, res) => {
   const { date, time, location, locationDetail, description, typeOfProblem } = req.body;
 
   if (!date || !time || !location || !description) {
@@ -90,22 +113,84 @@ app.post("/api/reports", (req, res) => {
   // Save the report locally
   writeReport(newReport);
 
-  // LOG FOR SECURE EMAIL SYSTEM:
-  // In a real production deployment, this would use a transporter like nodemailer or a secure web API
-  // to dispatch the structured email directly. Since the credentials are secure on the server,
-  // we do not leak the admin email.
-  console.log(`[EMAIL SYSTEM] SENDING SECURE REPORT TO ${rawRecipientEmail}:`);
-  console.log(`-----------------------------------------------`);
-  console.log(`Asunto: NUEVA DENUNCIA - Asamblea Multisectorial Paso de los Libres`);
-  console.log(`Fecha/Hora Suceso: ${date} ${time}`);
-  console.log(`Establecimiento: ${location} ${locationDetail ? `(${locationDetail})` : ""}`);
-  console.log(`Categoría: ${typeOfProblem}`);
-  console.log(`Detalle: ${description}`);
-  console.log(`-----------------------------------------------`);
+  const transporter = getMailTransporter();
+  let emailSent = false;
+  let emailError = "";
+
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: `"Asamblea Sanitaria" <${process.env.SMTP_USER}>`,
+        to: rawRecipientEmail,
+        subject: `⚠️ NUEVA DENUNCIA - Asamblea Multisectorial Paso de los Libres`,
+        text: `NUEVA DENUNCIA REGISTRADA\n\n` +
+              `Fecha del suceso: ${date}\n` +
+              `Hora aproximada: ${time}\n` +
+              `Lugar/Establecimiento: ${location} ${locationDetail ? `(${locationDetail})` : ""}\n` +
+              `Categoría de inconveniente: ${typeOfProblem}\n\n` +
+              `Descripción/Testimonio:\n` +
+              `"${description}"\n\n` +
+              `-----------------------------------------\n` +
+              `Enviado automáticamente desde el Registro Digital de la Asamblea Multisectorial de Paso de los Libres.`,
+        html: `
+          <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 3px solid #1c1c1c; background-color: #f8f6f2; color: #1c1c1c;">
+            <div style="background-color: #1c1c1c; color: #f8f6f2; padding: 18px; text-align: center; border-bottom: 4px solid #dc2626;">
+              <h2 style="margin: 0; font-family: Georgia, serif; letter-spacing: 2px; text-transform: uppercase;">ASAMBLEA MULTISECTORIAL</h2>
+              <p style="margin: 5px 0 0 0; font-size: 11px; font-family: monospace; letter-spacing: 1px;">SISTEMA DE CONTROL DE ADVERTENCIA SANITARIA</p>
+            </div>
+            <div style="padding: 20px 0; line-height: 1.6;">
+              <h3 style="border-bottom: 2px double #1c1c1c; padding-bottom: 10px; color: #dc2626; text-transform: uppercase; font-family: Georgia, serif; margin-top: 0;">🚨 NUEVO INFORME DE DENUNCIA</h3>
+              
+              <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+                <tr>
+                  <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-weight: bold; width: 35%; font-size: 12px; font-family: monospace; text-transform: uppercase;">Fecha del Suceso:</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-size: 14px;">${date}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-weight: bold; font-size: 12px; font-family: monospace; text-transform: uppercase;">Hora Aproximada:</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-size: 14px;">${time}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-weight: bold; font-size: 12px; font-family: monospace; text-transform: uppercase;">Establecimiento:</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-size: 14px;"><span style="background-color: #1c1c1c; color: #f8f6f2; padding: 4px 8px; font-weight: bold; font-size: 12px; text-transform: uppercase;">${location} ${locationDetail ? `(${locationDetail})` : ""}</span></td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-weight: bold; font-size: 12px; font-family: monospace; text-transform: uppercase;">Categoría:</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-weight: bold; color: #dc2626; font-size: 14px;">${typeOfProblem}</td>
+                </tr>
+              </table>
+
+              <h4 style="margin: 0 0 8px 0; font-family: Georgia, serif; text-transform: uppercase; font-size: 13px;">Relato del Ciudadano:</h4>
+              <div style="background-color: #ffffff; border: 1px solid #1c1c1c; padding: 20px; font-style: italic; font-size: 14px; line-height: 1.7; color: #2c2c2c;">
+                "${description.replace(/\n/g, "<br>")}"
+              </div>
+            </div>
+            <div style="font-size: 10px; text-align: center; color: #555; border-top: 2px double #1c1c1c; padding-top: 15px; margin-top: 30px; font-family: monospace;">
+              *Este informe fue procesado y transmitido de forma confidencial para el resguardo ciudadano.
+            </div>
+          </div>
+        `
+      });
+      console.log("Email sent successfully using SMTP settings.");
+      emailSent = true;
+    } catch (err: any) {
+      console.error("Failed to send email via nodemailer:", err);
+      emailError = err.message;
+    }
+  } else {
+    // Log as backup
+    console.log(`[EMAIL BACKUP LOG] SMTP not fully configured. Logging details for albertomartinwhite@gmail.com:`);
+    console.log(`Subject: ⚠️ NUEVA DENUNCIA - Asamblea Paso de los Libres`);
+    console.log(`To: ${rawRecipientEmail}`);
+    console.log(`Content: ${description}`);
+  }
 
   return res.json({
     success: true,
     message: "La denuncia ha sido registrada con éxito y enviada confidencialmente a la Asamblea.",
+    emailConfigured: !!transporter,
+    emailSent: emailSent,
+    emailError: emailError || undefined,
     report: newReport,
   });
 });
