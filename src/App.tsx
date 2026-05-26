@@ -191,27 +191,6 @@ export default function App() {
     setIsSubmitLoading(false);
   };
 
-  // Compile direct mailto link for direct email fallback
-  const getEmailMailtoUrl = () => {
-    const recipient = "albertomartinwhite@gmail.com";
-    const subject = "⚠️ NUEVA DENUNCIA - Asamblea Multisectorial Paso de los Libres";
-    const locDetail = location === "CAPS" ? capsName : location === "Otro" ? otherLocationDetail : location;
-    
-    const bodyText = `🚨 NUEVA DENUNCIA REGISTRADA 🚨\n` +
-                     `Asamblea Multisectorial de Paso de los Libres\n` +
-                     `-----------------------------------------\n` +
-                     `📍 Lugar/Establecimiento: ${locDetail}\n` +
-                     `📅 Fecha: ${date}\n` +
-                     `🕒 Hora aproximada: ${time}\n` +
-                     `⚠️ Categoría de reclamo: ${typeOfProblem}\n\n` +
-                     `💬 Relato/Testimonio:\n` +
-                     `"${description}"\n\n` +
-                     `-----------------------------------------\n` +
-                     `Enviado desde el Registro Digital de la Asamblea Multisectorial de Paso de los Libres.`;
-    
-    return `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
-  };
-
   // Share via WhatsApp
   const handleShareWhatsApp = () => {
     const text = encodeURIComponent(getShareText());
@@ -647,23 +626,7 @@ export default function App() {
                       </button>
                     </div>
 
-                    {/* Email Fallback Block */}
-                    <div className="p-4 bg-[#f0fcfd] border-2 border-[#0284c7]/60 text-left space-y-2">
-                      <p className="text-xs text-[#0369a1] font-bold font-serif leading-normal uppercase">
-                        📧 PASO 2: RESPALDO POR CASILLA DE CORREO
-                      </p>
-                      <p className="text-[11px] text-[#0369a1]/95 leading-relaxed font-sans">
-                        Si estás en Vercel u otro entorno estático, hacé clic abajo para despachar el reporte directamente a la coordinación en <strong>albertomartinwhite@gmail.com</strong>.
-                      </p>
-                      <a
-                        href={getEmailMailtoUrl()}
-                        className="w-full bg-[#0284c7] text-white font-black py-4 px-5 uppercase tracking-widest text-[11px] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:bg-[#0369a1] text-center"
-                      >
-                        <Mail className="w-4 h-4" />
-                        ENVIAR CORREO DE RESPALDO
-                      </a>
-                    </div>
-
+                    {/* Back button */}
                     <button
                       type="button"
                       onClick={() => {
