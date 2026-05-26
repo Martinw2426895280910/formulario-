@@ -178,11 +178,41 @@ app.post("/api/reports", async (req, res) => {
       emailError = err.message;
     }
   } else {
-    // Log as backup
-    console.log(`[EMAIL BACKUP LOG] SMTP not fully configured. Logging details for albertomartinwhite@gmail.com:`);
-    console.log(`Subject: ⚠️ NUEVA DENUNCIA - Asamblea Paso de los Libres`);
-    console.log(`To: ${rawRecipientEmail}`);
-    console.log(`Content: ${description}`);
+    // Zero-config FormSubmit fallback (Confidential/Secure on server side, no SMTP required!)
+    try {
+      const response = await fetch(`https://formsubmit.co/ajax/${rawRecipientEmail}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({
+          "_subject": "⚠️ NUEVA DENUNCIA - Asamblea Paso de los Libres",
+          "_captcha": "false",
+          "_template": "table",
+          "Fecha del Suceso": date,
+          "Hora Aproximada": time,
+          "Lugar / Establecimiento": `${location} ${locationDetail ? `(${locationDetail})` : ""}`,
+          "Categoría de Reclamo": typeOfProblem,
+          "Relato o Comentario Directo": description
+        })
+      });
+
+      if (response.ok) {
+        const result = (await response.json()) as any;
+        if (result.success === "true" || result.success === true) {
+          emailSent = true;
+          console.log("Email sent successfully using security email dispatch service FormSubmit.");
+        } else {
+          emailError = result.success || "FormSubmit failed";
+        }
+      } else {
+        emailError = `FormSubmit responded with HTTP ${response.status}`;
+      }
+    } catch (err: any) {
+      console.error("Zero-config email dispatch error on server.ts:", err);
+      emailError = err.message;
+    }
   }
 
   return res.json({

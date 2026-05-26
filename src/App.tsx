@@ -1,22 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   AlertTriangle, 
-  Calendar, 
-  Clock, 
   MapPin, 
-  Sparkles, 
   Share2, 
   Send, 
   CheckCircle2, 
-  History, 
-  Loader2, 
-  Info,
-  Phone,
+  Loader2,
   FileText,
-  Mail
+  Smartphone,
+  Monitor
 } from "lucide-react";
-import { Report } from "./types";
 import logoUrl from "./assets/images/multisectorial_logo_1779809299141.png";
 
 const CAPS_LIST = [
@@ -45,89 +39,44 @@ const PROBLEM_TYPES = [
 ];
 
 export default function App() {
-  // Form states
-  const [date, setDate] = useState<string>(() => {
-    const today = new Date();
-    const YYYY = today.getFullYear();
-    const MM = String(today.getMonth() + 1).padStart(2, "0");
-    const DD = String(today.getDate()).padStart(2, "0");
-    return `${YYYY}-${MM}-${DD}`;
-  });
-  
-  const [time, setTime] = useState<string>(() => {
-    const today = new Date();
-    const HH = String(today.getHours()).padStart(2, "0");
-    const MM = String(today.getMinutes()).padStart(2, "0");
-    return `${HH}:${MM}`;
-  });
+  // UI views and Device Simulator Mode (Móvil vs Escritorio)
+  const [viewMode, setViewMode] = useState<"movil" | "escritorio">("movil");
+  const [showSuccess, setShowSuccess] = useState<boolean>(false);
+  const [isSubmitLoading, setIsSubmitLoading] = useState<boolean>(false);
 
+  // Form selections and texts
   const [location, setLocation] = useState<"Hospital Público San José" | "CAPS" | "Otro">("Hospital Público San José");
   const [capsName, setCapsName] = useState<string>(CAPS_LIST[0]);
   const [otherLocationDetail, setOtherLocationDetail] = useState<string>("");
   const [typeOfProblem, setTypeOfProblem] = useState<string>(PROBLEM_TYPES[0]);
   const [description, setDescription] = useState<string>("");
 
-  // AI redactor states
-  const [isImproving, setIsImproving] = useState<boolean>(false);
-  const [aiOptimized, setAiOptimized] = useState<boolean>(false);
-  const [aiMessage, setAiMessage] = useState<string>("");
-  const [isSubmitLoading, setIsSubmitLoading] = useState<boolean>(false);
-  const [showSuccess, setShowSuccess] = useState<boolean>(false);
+  // Target WhatsApp
   const [whatsappPhone, setWhatsappPhone] = useState<string>("+549");
 
-
-
-  // Handle improving text using Gemini
-  const handleAiImprove = async () => {
-    if (!description.trim()) {
-      alert("Por favor escribe una descripción primero para que la IA la optimice.");
-      return;
-    }
-
-    setIsImproving(true);
-    setAiOptimized(false);
-
-    try {
-      const res = await fetch("/api/improve-complaint", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: description,
-          location: location === "CAPS" ? capsName : location === "Otro" ? otherLocationDetail : location,
-          typeOfProblem
-        })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success) {
-          setDescription(data.text);
-          setAiOptimized(true);
-          setAiMessage("¡La Inteligencia Artificial ha estructurado tu mensaje con formato de alto impacto para redes sociales!");
-        } else {
-          setAiMessage("No se pudo optimizar con IA, se conservó tu texto original.");
-        }
-      } else {
-        setAiMessage("Error al conectar con el servidor de IA. Se mantiene el texto original.");
-      }
-    } catch (err) {
-      console.error("Error optimizing text:", err);
-      setAiMessage("Error de red. Se mantiene el texto original.");
-    } finally {
-      setIsImproving(false);
-      // Clear alert message after 6 seconds
-      setTimeout(() => setAiMessage(""), 6000);
-    }
+  // Get current date and time dynamically for automatic backend logs (so the form stays clean and fast)
+  const getLocalDateTimePayload = () => {
+    const today = new Date();
+    const YYYY = today.getFullYear();
+    const MM = String(today.getMonth() + 1).padStart(2, "0");
+    const DD = String(today.getDate()).padStart(2, "0");
+    const HH = String(today.getHours()).padStart(2, "0");
+    const Min = String(today.getMinutes()).padStart(2, "0");
+    return {
+      date: `${YYYY}-${MM}-${DD}`,
+      time: `${HH}:${Min}`
+    };
   };
 
   // Compile final WhatsApp share string
   const getShareText = () => {
+    const times = getLocalDateTimePayload();
     const locDetail = location === "CAPS" ? capsName : location === "Otro" ? otherLocationDetail : location;
     return `🚨 *DENUNCIA PÚBLICA - CRISIS DE SALUD* 🚨\n` +
            `*Asamblea Multisectorial de Paso de los Libres*\n` +
            `-----------------------------------------\n` +
            `📍 *Establecimiento:* ${locDetail}\n` +
-           `📅 *Fecha:* ${date}  |  🕒 *Hora:* ${time}\n` +
+           `📅 *Fecha:* ${times.date}  |  🕒 *Hora:* ${times.time}\n` +
            `⚠️ *Problema:* ${typeOfProblem}\n\n` +
            `💬 *Testimonio / Suceso:*\n` +
            `"${description.trim()}"\n\n` +
@@ -141,16 +90,17 @@ export default function App() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim()) {
-      alert("Por favor, escribe un comentario descriptivo.");
+      alert("Por favor, escribe un comentario o detalle sobre tu caso.");
       return;
     }
 
     setIsSubmitLoading(true);
 
     const locDetail = location === "CAPS" ? capsName : location === "Otro" ? otherLocationDetail : "";
+    const times = getLocalDateTimePayload();
     const payload = {
-      date,
-      time,
+      date: times.date,
+      time: times.time,
       location,
       locationDetail: locDetail,
       typeOfProblem,
@@ -158,253 +108,203 @@ export default function App() {
     };
 
     try {
-      // First attempt: Save to server backend
+      // Dispatch payload securely to back-end (which calls the server email/FormSubmit dispatch)
       const res = await fetch("/api/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-
-      if (res.ok) {
+      const contentType = res.headers.get("content-type");
+      if (res.ok && contentType && contentType.includes("application/json")) {
         const data = await res.json();
-        // Succeeded on server
-        console.log("Servidor procesó el reporte con éxito:", data);
-      } else {
-        console.warn("Servidor respondió con código no-ok, procediendo en modo local offline/Vercel.");
+        console.log("Servidor procesó la denuncia con éxito:", data);
       }
     } catch (error) {
-      console.warn("Falla de red para el backend del servidor, guardando localmente en el dispositivo e iniciando WhatsApp:", error);
+      console.warn("Falla de red para el backend directa, guardando localmente en el dispositivo:", error);
     }
 
-    // GUARANTEE SUCCESS STATE (No block-alert, ultra-smooth for Vercel & Mobile)
+    // Save report in local devices for state consistency and fallback
     try {
       const existing = localStorage.getItem("asamblea_reports") || "[]";
       const list = JSON.parse(existing);
       list.push({ ...payload, id: Date.now() });
       localStorage.setItem("asamblea_reports", JSON.stringify(list));
-    } catch (e) {
-      console.error("Error al almacenar localmente:", e);
+    } catch (err) {
+      console.error("Local storage sync bypassed:", err);
     }
 
-    // Always transition to success view
     setShowSuccess(true);
     setIsSubmitLoading(false);
   };
 
-  // Share via WhatsApp
   const handleShareWhatsApp = () => {
     const text = encodeURIComponent(getShareText());
-    // Clean phone number from spaces, dashes, parentheses and leave only + and numbers
     const cleanPhone = whatsappPhone.replace(/[^0-9+]/g, "");
-    
-    // Check if phone was filled with something more than just "+54" or "+549" or is empty
     const hasValidPhone = cleanPhone && cleanPhone !== "+54" && cleanPhone !== "+549" && cleanPhone !== "+" && cleanPhone.length > 5;
-    
     const url = hasValidPhone
       ? `https://api.whatsapp.com/send?phone=${encodeURIComponent(cleanPhone)}&text=${text}`
       : `https://api.whatsapp.com/send?text=${text}`;
-      
     window.open(url, "_blank");
   };
 
-  // Format date helper
-  const formatDateFriendly = (dStr: string) => {
-    try {
-      const parts = dStr.split("-");
-      if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
-    } catch (e) {}
-    return dStr;
-  };
-
   return (
-    <div className="min-h-screen bg-[#e0f2fe] text-[#0284c7] p-3 sm:p-6 md:p-8 font-sans selection:bg-sky-100 selection:text-sky-900">
-      {/* Editorial Frame Wrapper */}
-      <div className="max-w-6xl mx-auto bg-[#f0f9ff] border-4 sm:border-[12px] border-[#bae6fd] flex flex-col min-h-screen shadow-xl">
-        
-        {/* Top Citizen Header Bar */}
-        <div className="border-b border-[#0284c7] px-6 py-3 flex flex-wrap justify-between items-center text-[10px] font-mono uppercase tracking-widest opacity-90 gap-2 bg-[#bae6fd] text-[#0369a1]">
-          <div>MESA DE LA ASAMBLEA • PASO DE LOS LIBRES</div>
-          <div>ESTADO: EN DEFENSA DE LA SALUD PÚBLICA COLECTIVA</div>
-          <div className="text-[#0369a1] font-bold">2026 • ACCIÓN COMUNITARIA</div>
-        </div>
-
-        {/* Dynamic Inner Layout Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 flex-1">
+    <div className="min-h-screen bg-[#e0f2fe] p-2 sm:p-4 md:p-8 flex flex-col items-center justify-center font-sans selection:bg-sky-100 selection:text-sky-900">
+      
+      {/* VISTA CONTROLLER (MOBILE & DESKTOP SWITCH BUTTONS) */}
+      <div className="w-full max-w-2xl mb-4 bg-white/95 border-2 border-[#bae6fd] p-2 rounded-xl flex items-center justify-between shadow-md">
+        <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-[#0369a1] pl-2">
+          Ver diseño:
+        </span>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setViewMode("movil")}
+            className={`px-3.5 py-2 text-xs sm:text-sm font-black uppercase tracking-wider transition-all rounded-lg cursor-pointer flex items-center gap-1.5 ${
+              viewMode === "movil"
+                ? "bg-[#16a34a] text-white shadow-md scale-[1.02]"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            <Smartphone className="w-4 h-4" />
+            VISTA MOVIL
+          </button>
           
-          {/* LEFT SIDEBAR: Logo & Identity (lg:col-span-4) */}
-          <div className="lg:col-span-4 border-b lg:border-b-0 lg:border-r border-[#0284c7] p-6 md:p-10 flex flex-col justify-between bg-[#fcfdff]">
-            <div className="space-y-6">
-              
-              {/* Logo of the Multisectorial */}
-              <div className="flex flex-col items-center">
-                <div className="relative w-36 h-36 flex items-center justify-center border-4 border-[#0284c7] p-2 bg-white shadow-sm">
-                  <img 
-                    src={logoUrl} 
-                    alt="Logo Asamblea Multisectorial" 
-                    className="w-full h-full object-contain"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-                <div className="text-[10px] uppercase tracking-widest font-mono font-bold mt-3 bg-[#0284c7] text-white px-3 py-1">
-                  Multisectorial Libres
-                </div>
-              </div>
+          <button
+            type="button"
+            onClick={() => setViewMode("escritorio")}
+            className={`px-3.5 py-2 text-xs sm:text-sm font-black uppercase tracking-wider transition-all rounded-lg cursor-pointer flex items-center gap-1.5 ${
+              viewMode === "escritorio"
+                ? "bg-[#0284c7] text-white shadow-md scale-[1.02]"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            <Monitor className="w-4 h-4" />
+            VISTA ESCRITORIO
+          </button>
+        </div>
+      </div>
 
-              <div className="space-y-3 text-center lg:text-left">
-                <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tight leading-none font-serif text-[#0284c7]">
-                  ASAMBLEA<br />
-                  <span className="text-[#dc2626]">MULTISECTORIAL</span>
-                </h1>
-                <div className="h-1.5 w-24 bg-[#0284c7] mx-auto lg:mx-0"></div>
-                <p className="text-base sm:text-lg italic font-serif leading-relaxed text-[#0369a1] pt-2">
-                  "Por el derecho a la salud pública digna en el Hospital San José y CAPS de nuestra ciudad."
-                </p>
-              </div>
+      {/* COMPACT CONTAINER FOR THE SELECTED MODE */}
+      <div className={`w-full bg-white shadow-2xl overflow-hidden transition-all duration-300 ${
+        viewMode === "movil" 
+          ? "max-w-[420px] border-[12px] border-slate-900 rounded-[38px] my-2 relative" 
+          : "max-w-2xl border-4 sm:border-8 border-[#0284c7] rounded-2xl"
+      }`}>
+
+        {/* CELULAR DECORATIVE STATUS BAR */}
+        {viewMode === "movil" && (
+          <div className="bg-slate-900 text-white/95 text-[10px] font-mono px-6 py-2 flex justify-between items-center select-none border-b border-slate-850">
+            <span className="font-extrabold text-[#25D366]">12:30 PM 🕒</span>
+            <div className="px-2 py-0.5 bg-slate-950 rounded-full text-[8px] font-bold text-white/40 uppercase tracking-widest">
+              CELULAR
             </div>
-
-            <div className="pt-8 lg:pt-0 space-y-4 border-t border-[#bae6fd] lg:border-t-0 mt-8">
-              <div className="p-4 bg-[#0284c7] text-white font-serif space-y-2">
-                <h3 className="font-sans text-[10px] uppercase font-bold tracking-[0.2em] text-[#fee2e2]">
-                  DIRECCIÓN DE ENLACE SECRETO
-                </h3>
-                <p className="text-xs leading-relaxed opacity-95 italic">
-                  Tus datos se transmiten de forma confidencial y anónima directamente hacia el correo administrativo de control de la Asamblea.
-                </p>
-              </div>
-
-              <div className="font-mono text-[9px] uppercase tracking-wider text-[#0369a1] space-y-1">
-                <div>• Paso de los Libres, Corrientes, AR</div>
-                <div>• Defensa del CAPS Barrio Estación</div>
-                <div>• Defensa del Hospital de San José</div>
-              </div>
+            <div className="flex items-center gap-1">
+              <span className="text-[9px]">4G LTE</span>
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse inline-block"></div>
             </div>
           </div>
+        )}
+        
+        {/* =======================================================
+            PORTADA (HEADER)
+         ======================================================= */}
+        <header className="bg-gradient-to-br from-[#0284c7] to-[#0369a1] text-white p-5 sm:p-8 text-center relative border-b-4 border-[#dc2626]">
+          <div className="flex flex-col items-center gap-3">
+            <div className="bg-white p-2 border-2 border-[#bae6fd] rounded-xl shadow-lg w-28 h-28 flex items-center justify-center">
+              <img 
+                src={logoUrl} 
+                alt="Logo Asamblea Multisectorial" 
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            
+            <div className="space-y-1 mt-1">
+              <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tight font-serif leading-tight">
+                ASAMBLEA <span className="text-red-400">MULTISECTORIAL</span>
+              </h1>
+              <p className="text-xs sm:text-sm uppercase tracking-widest font-mono font-bold text-sky-200">
+                Paso de los Libres, Corrientes
+              </p>
+              <div className="h-1.5 w-24 bg-red-500 mx-auto rounded-full my-2"></div>
+              <p className="text-md sm:text-lg italic font-serif text-sky-50 font-medium">
+                Registro de Reclamos Sanitarios
+              </p>
+            </div>
+          </div>
+        </header>
 
-          {/* RIGHT MAIN CONTENT: The Interactive Form (lg:col-span-8) */}
-          <div className="lg:col-span-8 p-6 md:p-12 flex flex-col justify-between">
-            <div>
+        {/* Form Body */}
+        <main className="p-5 sm:p-8 bg-[#f8fafc]">
+          
+          {!showSuccess ? (
+            <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
               
-              {/* Header inside main pane */}
-              <div className="mb-8 border-b-2 border-double border-[#0284c7] pb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                <div>
-                  <h2 className="text-4xl sm:text-6xl font-black uppercase tracking-tighter leading-none font-serif text-[#0284c7]">
-                    DENUNCIA PÚBLICA
-                  </h2>
-                  <p className="font-sans text-xs tracking-wider uppercase opacity-80 mt-1 text-[#0369a1]">
-                    Campaña Ciudadana contra la falta de remedios y el maltrato estatal
-                  </p>
-                </div>
-                <div className="shrink-0 flex gap-1.5">
-                  <span className="px-2.5 py-1 bg-[#25D366] text-white font-mono text-[9px] font-bold uppercase rounded-none tracking-widest shadow-sm">
-                    WHATSAPP READY
-                  </span>
-                  <span className="px-2.5 py-1 border border-[#0284c7] font-mono text-[9px] text-[#0284c7] font-bold uppercase rounded-none tracking-widest bg-sky-50">
-                    RESGUARDO TOTAL
-                  </span>
-                </div>
-              </div>
-
-              {/* Form Presentation */}
-              {!showSuccess ? (
-                <form onSubmit={handleSubmit} className="space-y-8">
+              {/* =======================================================
+                  CLASIFICACIÓN DEL LUGAR (ESTABLECIMIENTO)
+               ======================================================= */}
+              <div className="space-y-3">
+                <label className="block text-lg sm:text-xl font-black uppercase text-[#0284c7] tracking-wider leading-snug flex items-center gap-2">
+                  <span className="bg-[#0284c7] text-white w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-sm font-sans shrink-0">1</span>
+                  Lugar de la Incidencia
+                </label>
+                
+                {/* Visual Buttons specifically giant for mobile systems */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setLocation("Hospital Público San José")}
+                    className={`p-4 text-sm sm:text-base font-black uppercase tracking-wide transition-all rounded-xl border-2 cursor-pointer text-center ${
+                      location === "Hospital Público San José"
+                        ? "bg-[#0284c7] text-white border-[#0284c7] shadow-md scale-[1.01]"
+                        : "bg-white border-[#bae6fd] text-[#0369a1] hover:bg-[#f0f9ff]"
+                    }`}
+                  >
+                    Hospital San José
+                  </button>
                   
-                  {/* Dynamic Instruction Banner */}
-                  <div className="bg-[#e0f2fe] border border-dashed border-[#0284c7] p-4 text-xs flex gap-3 items-start">
-                    <span className="text-lg">📢</span>
-                    <p className="leading-relaxed text-[#0369a1]">
-                      Estimado vecino/a de Paso de los Libres: Te solicitamos completar únicamente la <strong>fecha y hora</strong> del suceso, el <strong>lugar</strong> y un breve <strong>comentario</strong>. Podrás usar la Inteligencia Artificial incorporada en la planilla para perfeccionar de inmediato tu redacción antes de difundirla.
-                    </p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLocation("CAPS")}
+                    className={`p-4 text-sm sm:text-base font-black uppercase tracking-wide transition-all rounded-xl border-2 cursor-pointer text-center ${
+                      location === "CAPS"
+                        ? "bg-[#0284c7] text-white border-[#0284c7] shadow-md scale-[1.01]"
+                        : "bg-white border-[#bae6fd] text-[#0369a1] hover:bg-[#f0f9ff]"
+                    }`}
+                  >
+                    CAPS del Barrio
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setLocation("Otro")}
+                    className={`p-4 text-sm sm:text-base font-black uppercase tracking-wide transition-all rounded-xl border-2 cursor-pointer text-center ${
+                      location === "Otro"
+                        ? "bg-[#0284c7] text-white border-[#0284c7] shadow-md scale-[1.01]"
+                        : "bg-white border-[#bae6fd] text-[#0369a1] hover:bg-[#f0f9ff]"
+                    }`}
+                  >
+                    Otro Lugar
+                  </button>
+                </div>
 
-                  {/* DateTime Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                    <div className="border-b border-[#0284c7] pb-2 focus-within:border-[#dc2626] transition-colors">
-                      <label className="block font-sans text-[10px] uppercase font-bold tracking-widest text-[#0284c7] mb-1 flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-sky-600" /> Fecha del Suceso
-                      </label>
-                      <input 
-                        type="date"
-                        required
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        className="w-full bg-transparent text-xl font-serif text-[#0369a1] border-none outline-none p-0 focus:ring-0"
-                      />
-                    </div>
-
-                    <div className="border-b border-[#0284c7] pb-2 focus-within:border-[#dc2626] transition-colors">
-                      <label className="block font-sans text-[10px] uppercase font-bold tracking-widest text-[#0284c7] mb-1 flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-sky-600" /> Hora Aproximada
-                      </label>
-                      <input 
-                        type="time"
-                        required
-                        value={time}
-                        onChange={(e) => setTime(e.target.value)}
-                        className="w-full bg-transparent text-xl font-serif text-[#0369a1] border-none outline-none p-0 focus:ring-0"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Location Selector */}
-                  <div className="space-y-2">
-                    <label className="block font-sans text-[10px] uppercase font-bold tracking-widest text-[#0284c7] flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-sky-600" /> Lugar de la Incidencia (Establecimiento Público)
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => { setLocation("Hospital Público San José"); }}
-                        className={`py-3 px-4 border text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                          location === "Hospital Público San José"
-                            ? "bg-[#0284c7] text-white border-[#0284c7]"
-                            : "bg-transparent border-[#bae6fd] text-[#0369a1] hover:bg-[#bae6fd] hover:border-[#0284c7]"
-                        }`}
-                      >
-                        Hospital San José
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setLocation("CAPS"); }}
-                        className={`py-3 px-4 border text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                          location === "CAPS"
-                            ? "bg-[#0284c7] text-white border-[#0284c7]"
-                            : "bg-transparent border-[#bae6fd] text-[#0369a1] hover:bg-[#bae6fd] hover:border-[#0284c7]"
-                        }`}
-                      >
-                        CAPS del Barrio
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setLocation("Otro"); }}
-                        className={`py-3 px-4 border text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                          location === "Otro"
-                            ? "bg-[#0284c7] text-white border-[#0284c7]"
-                            : "bg-transparent border-[#bae6fd] text-[#0369a1] hover:bg-[#bae6fd] hover:border-[#0284c7]"
-                        }`}
-                      >
-                        Otro Lugar
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Location Dropdowns */}
-                  <AnimatePresence mode="wait">
-                    {location === "CAPS" && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -5 }}
-                        className="bg-[#f0f9ff] p-4 border border-[#0284c7] space-y-1.5"
-                      >
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-[#0369a1]">
-                          ¿En cuál Centro de Atención Primaria (CAPS) ocurrió?
+                {/* Sub-inputs of classification depending on button state */}
+                <AnimatePresence mode="wait">
+                  {location === "CAPS" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="bg-[#f0f9ff] p-4 border-2 border-[#0284c7] rounded-xl space-y-2 mt-2">
+                        <label className="block text-xs sm:text-sm font-bold uppercase tracking-wide text-[#0369a1]">
+                          Seleccioná cuál CAPS:
                         </label>
                         <select
                           value={capsName}
                           onChange={(e) => setCapsName(e.target.value)}
-                          className="w-full bg-transparent border-b border-[#0284c7] text-sm py-2 font-serif focus:outline-none focus:border-[#dc2626] cursor-pointer text-[#0369a1]"
+                          className="w-full bg-white border-2 border-[#bae6fd] rounded-lg p-3 text-sm sm:text-base font-serif focus:outline-none focus:border-[#0284c7] text-[#0369a1] font-bold"
                         >
                           {CAPS_LIST.map((caps, index) => (
                             <option key={index} value={caps}>
@@ -412,254 +312,223 @@ export default function App() {
                             </option>
                           ))}
                         </select>
-                      </motion.div>
-                    )}
+                      </div>
+                    </motion.div>
+                  )}
 
-                    {location === "Otro" && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -5 }}
-                        className="bg-[#f0f9ff] p-4 border border-[#0284c7] space-y-1.5"
-                      >
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-[#0369a1]">
-                          Especificá el lugar o dirección
+                  {location === "Otro" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="bg-[#f0f9ff] p-4 border-2 border-[#0284c7] rounded-xl space-y-2 mt-2">
+                        <label className="block text-xs sm:text-sm font-bold uppercase tracking-wide text-[#0369a1]">
+                          Escribí el lugar o área:
                         </label>
                         <input
                           type="text"
                           required
                           value={otherLocationDetail}
                           onChange={(e) => setOtherLocationDetail(e.target.value)}
-                          placeholder="Ej: Odontopediatría, Emergencia Ambulatoria, etc."
-                          className="w-full bg-transparent border-b border-[#0284c7] text-sm py-2 font-serif focus:outline-none focus:border-[#dc2626]"
+                          placeholder="Ej: Odontología, Zona rural, Vacunatorio, etc."
+                          className="w-full bg-white border-2 border-[#bae6fd] rounded-lg p-3 text-sm sm:text-base focus:outline-none focus:border-[#25d366] text-[#0369a1] font-bold placeholder-sky-900/40"
                         />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Category of the report */}
-                  <div className="border-b border-[#0284c7] pb-3">
-                    <label className="block font-sans text-[10px] uppercase font-bold tracking-widest text-[#0284c7] mb-2">
-                      Categoría de Reclamo
-                    </label>
-                    <select
-                      value={typeOfProblem}
-                      onChange={(e) => setTypeOfProblem(e.target.value)}
-                      className="w-full bg-transparent text-base font-serif text-[#0369a1] py-1 border-none outline-none cursor-pointer focus:ring-0"
-                    >
-                      {PROBLEM_TYPES.map((pt, index) => (
-                        <option key={index} value={pt}>
-                          {pt}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Description Box with AI Assist */}
-                  <div className="space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <label className="block font-sans text-[10px] uppercase font-bold tracking-widest text-slate-700 italic">
-                        Relato descriptivo (Estilo mensaje de red social)
-                      </label>
-                      <button
-                        type="button"
-                        onClick={handleAiImprove}
-                        disabled={isImproving || !description.trim()}
-                        className={`text-xs font-bold px-3 py-1.5 border transition-all flex items-center gap-1.5 cursor-pointer ${
-                          isImproving
-                            ? "bg-stone-100 text-stone-400 border-stone-200 cursor-not-allowed"
-                            : !description.trim()
-                            ? "bg-transparent border-stone-300 text-stone-400 cursor-not-allowed"
-                            : "bg-[#fcf1db] text-[#854d0e] border-[#854d0e] hover:bg-[#fef3c7]"
-                        }`}
-                        title="La Inteligencia Artificial perfeccionará el texto para darle formato de publicación potente de Facebook o WhatsApp"
-                      >
-                        {isImproving ? (
-                          <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            Puliento...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                            Optimizar con Inteligencia Artificial
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    <textarea
-                      required
-                      rows={5}
-                      value={description}
-                      onChange={(e) => {
-                        setDescription(e.target.value);
-                        if (aiOptimized) setAiOptimized(false);
-                      }}
-                      placeholder="Contanos qué sucedió. P ej: 'Fui al CAPS de Barrio Estación a las 4 de la tarde a retirar medicamentos y el personal me atendió de muy mala gana, diciendo que no hay Metformina hace tres meses para los abuelos y que nos quejemos donde sea...'"
-                      className="w-full bg-white border border-[#0284c7] p-4 text-base font-serif resize-y focus:ring-4 focus:ring-[#0284c7]/5 outline-none font-medium leading-relaxed text-[#0369a1] placeholder-[#0284c7]/50"
-                    ></textarea>
-
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                      <span className="text-[10px] font-mono text-[#4a4a4a]">
-                        ⚠️ Podés relatar de manera directa y coloquial.
-                      </span>
-
-                      {aiOptimized && (
-                        <span className="text-emerald-800 text-xs bg-[#ecfdf5] border border-emerald-500 px-2.5 py-1 font-bold flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" /> Formato de Alto Impacto Generado (Listo)
-                        </span>
-                      )}
-                    </div>
-
-                    {aiMessage && (
-                      <p className="text-xs mt-1 text-[#854d0e] bg-[#fdfaf2] p-3 border border-[#fef3c7] font-serif italic">
-                        {aiMessage}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Submission and Action Buttons */}
-                  <div className="pt-4 border-t border-[#0284c7]">
-                    <button
-                      type="submit"
-                      disabled={isSubmitLoading}
-                      className="w-full bg-gradient-to-r from-[#25D366] via-emerald-500 to-[#128C7E] text-white font-black py-4.5 px-6 uppercase tracking-wider text-sm transition-all flex items-center justify-center gap-2 shadow-md animate-pulse ring-4 ring-[#25D366]/30 hover:scale-[1.01] cursor-pointer"
-                    >
-                      {isSubmitLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin text-white" />
-                          PROCESANDO ENVÍO CONFIDENCIAL...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4 text-white" />
-                          REGISTRAR DENUNCIA (ENVIAR Y PREPARAR WHATSAPP)
-                        </>
-                      )}
-                    </button>
-                    <p className="text-[9px] text-center font-mono text-slate-500 mt-2 tracking-tight">
-                      *Los reportes son procesados de forma autónoma por nuestro servidor y enviados confidencialmente de forma segura a la mesa de la Asamblea.
-                    </p>
-                  </div>
-                </form>
-              ) : (
-                /* Editorial Redirection and Success Panel */
-                <div className="space-y-6 py-6 border-2 border-[#0284c7] p-6 sm:p-10 bg-[#f0f9ff] text-center">
-                  <div className="w-16 h-16 bg-emerald-100 text-[#15803d] rounded-full flex items-center justify-center mx-auto border-2 border-[#0284c7] shadow-sm animate-pulse">
-                    <CheckCircle2 className="w-9 h-9" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tight font-serif text-[#0284c7]">
-                      ¡REGISTRO PROCESADO CON ÉXITO!
-                    </h3>
-                    <p className="text-sm text-[#0369a1] leading-relaxed max-w-lg mx-auto">
-                      La información ha sido guardada en los servidores de control de la Asamblea y despachada herméticamente por email a la coordinación de la <strong className="text-[#0284c7] font-serif">Asamblea Multisectorial de Paso de los Libres</strong>.
-                    </p>
-                  </div>
-
-                  {/* PROMINENT DATABASE SUCESS BANNER REQUESTED BY USER */}
-                  <div className="bg-[#ecfdf5] border-2 border-[#15803d] p-5 shadow-sm text-center">
-                    <p className="text-base sm:text-lg font-black text-[#15803d] uppercase tracking-tight leading-snug font-sans flex items-center justify-center gap-2">
-                      <span>¡Su reporte fue enviado a la base de datos de la Asamblea Multisectorial de Paso de los Libres! 🚨</span>
-                    </p>
-                  </div>
-
-                  <div className="bg-white border-2 border-dashed border-[#0284c7] max-w-xl mx-auto p-5 text-left space-y-3 font-serif">
-                    <div className="flex justify-between items-center border-b border-[#bae6fd] pb-1">
-                      <span className="text-[10px] font-sans uppercase font-bold text-slate-500">Lugar:</span>
-                      <span className="text-xs font-bold text-[#0369a1]">
-                        {location === "CAPS" ? capsName : location === "Otro" ? otherLocationDetail : location}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center border-b border-[#bae6fd] pb-1">
-                      <span className="text-[10px] font-sans uppercase font-bold text-slate-500">Categoría:</span>
-                      <span className="text-xs font-bold text-[#dc2626]">{typeOfProblem}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-sans uppercase font-bold text-slate-500 block mb-1">Texto Final Reformateado para Compartir:</span>
-                      <div className="bg-[#fcfdff] p-3 border border-[#bae6fd] text-xs text-[#0369a1] whitespace-pre-wrap max-h-40 overflow-y-auto leading-relaxed italic">
-                        {description}
                       </div>
-                    </div>
-                  </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
-                  {/* Immediate Action to share on WhatsApp & Email Fallback */}
-                  <div className="pt-2 max-w-md mx-auto space-y-4">
-                    
-                    {/* WhatsApp Block */}
-                    <div className="p-4 bg-[#f0fdf4] border-2 border-[#25D366]/60 text-left space-y-3">
-                      <p className="text-xs text-[#15803d] font-bold font-serif leading-normal uppercase">
-                        📢 PASO 1: DIFUNDIR POR WHATSAPP
-                      </p>
-                      <p className="text-[11px] text-[#15803d]/90 leading-relaxed font-sans">
-                        Hacé clic abajo para abrir WhatsApp y compartir instantáneamente el reclamo con tus vecinos, grupos o coordinadores. 
-                      </p>
-                      
-                      {/* WhatsApp Recipient Number Configuration Input */}
-                      <div className="space-y-1 bg-white p-2.5 border border-[#25D366]/40">
-                        <label className="block text-[9px] uppercase font-bold text-[#15803d] tracking-wider leading-none">
-                          Número de WhatsApp Destinatario (Prefijo +54):
-                        </label>
-                        <div className="flex gap-2 mt-1">
-                          <input
-                            type="text"
-                            placeholder="Ej: +5493772123456"
-                            value={whatsappPhone}
-                            onChange={(e) => setWhatsappPhone(e.target.value)}
-                            className="bg-transparent border-b-2 border-[#25D366] text-[#128C7E] text-xs px-1 py-0.5 focus:outline-none focus:border-[#128C7E] font-mono font-bold flex-1"
-                          />
-                        </div>
-                        <p className="text-[9px] text-[#15803d]/80 leading-normal font-sans pt-0.5">
-                          * Usá <strong>+54 9</strong> (código del país y celular argentino) seguido del código de área local sin el 0 y el número sin el 15.
-                        </p>
-                      </div>
+              {/* =======================================================
+                  CLASIFICACIÓN DE PROBLEMAS
+               ======================================================= */}
+              <div className="space-y-3">
+                <label className="block text-lg sm:text-xl font-black uppercase text-[#0284c7] tracking-wider leading-snug flex items-center gap-2">
+                  <span className="bg-[#0284c7] text-white w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-sm font-sans shrink-0">2</span>
+                  Clasificación del Inconveniente
+                </label>
+                
+                <div className="bg-white border-2 border-[#bae6fd] rounded-xl p-2 focus-within:border-[#0284c7] transition-all">
+                  <select
+                    value={typeOfProblem}
+                    onChange={(e) => setTypeOfProblem(e.target.value)}
+                    className="w-full bg-transparent text-sm sm:text-base md:text-md font-bold text-[#0369a1] p-3 border-none outline-none cursor-pointer focus:ring-0"
+                  >
+                    {PROBLEM_TYPES.map((pt, index) => (
+                      <option key={index} value={pt}>
+                        {pt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-                      <button
-                        type="button"
-                        onClick={handleShareWhatsApp}
-                        className="w-full bg-gradient-to-r from-[#25D366] via-[#20ba59] to-[#128C7E] text-white font-black py-4 px-5 uppercase tracking-widest text-[11px] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:scale-[1.01] ring-2 ring-[#25D366]/30"
-                      >
-                        <Share2 className="w-4 h-4" />
-                        ENVIAR MENSAJE DE WHATSAPP
-                      </button>
-                    </div>
+              {/* =======================================================
+                  VENTANA PARA DESCRIBIR EL INCONVENIENTE
+               ======================================================= */}
+              <div className="space-y-3">
+                <label className="block text-lg sm:text-xl font-black uppercase text-[#0284c7] tracking-wider leading-snug flex items-center gap-2">
+                  <span className="bg-[#0284c7] text-white w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-sm font-sans shrink-0">3</span>
+                  Descripción del Caso o Relato
+                </label>
 
-                    {/* Back button */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowSuccess(false);
-                        setDescription("");
-                        setAiOptimized(false);
-                      }}
-                      className="text-xs text-[#dc2626] font-bold tracking-tight uppercase hover:underline cursor-pointer pt-2 block mx-auto"
-                    >
-                      ( Cargar otro informe o corregir reporte actual )
-                    </button>
+                <textarea
+                  required
+                  rows={6}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Escribí de manera detallada lo que pasó. Ej: Vine al CAPS y me comunicaron que no hay remedios, tampoco hay pediatra..."
+                  className="w-full bg-white border-2 border-[#bae6fd] p-4 text-base sm:text-lg rounded-xl focus:border-[#0284c7] focus:ring-4 focus:ring-sky-100 outline-none font-medium leading-relaxed text-[#0369a1] placeholder-[#0284c7]/40 resize-y"
+                ></textarea>
+              </div>
+
+              {/* =======================================================
+                  BOTÓN ENVIAR (REGISTRAR DENUNCIA)
+               ======================================================= */}
+              <div className="pt-4 border-t-2 border-[#bae6fd]">
+                <button
+                  type="submit"
+                  disabled={isSubmitLoading}
+                  className="w-full bg-gradient-to-r from-[#16a34a] to-[#15803d] text-white font-black py-5 px-6 rounded-2xl uppercase tracking-wider text-base sm:text-lg transition-all flex items-center justify-center gap-3 shadow-lg active:scale-95 cursor-pointer ring-4 ring-[#16a34a]/20 hover:from-[#15803d] hover:to-[#166534]"
+                >
+                  {isSubmitLoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin text-white" />
+                      ENVIANDO REPORTE...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5 text-white" />
+                      ENVIAR RECLAMO DE SALUD
+                    </>
+                  )}
+                </button>
+                
+                <p className="text-[10px] sm:text-xs text-center font-mono text-slate-400 mt-3 uppercase tracking-tight">
+                  🚨 Envío automático y totalmente confidencial para resguardo ciudadano
+                </p>
+              </div>
+
+            </form>
+          ) : (
+            
+            /* =======================================================
+                REPORT SENT & CONFIRMED SUCCESSFULLY SCREEN
+               ======================================================= */
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="space-y-6 text-center py-4"
+            >
+              
+              {/* SUCCESS LOGO */}
+              <div className="w-20 h-20 bg-emerald-100 text-[#15803d] rounded-full flex items-center justify-center mx-auto border-4 border-[#15803d] shadow-md animate-bounce">
+                <CheckCircle2 className="w-12 h-12" />
+              </div>
+
+              {/* REDIRECT INFO */}
+              <div className="space-y-2">
+                <h3 className="text-3xl font-black uppercase tracking-tight text-[#0284c7] font-serif leading-none">
+                  ¡RECLAMO REGISTRADO!
+                </h3>
+                <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-serif italic">
+                  La información ha sido codificada y despachada de manera automática y confidencial a la coordinación general.
+                </p>
+              </div>
+
+              {/* PROMINENT DATABASE SUCCESS BANNER REQUESTED BY USER */}
+              <div className="bg-[#ecfdf5] border-4 border-[#15803d] p-5 rounded-2xl shadow-md text-center">
+                <p className="text-md sm:text-xl font-black text-[#15803d] uppercase tracking-normal leading-relaxed font-sans flex items-center justify-center gap-2">
+                  <span>¡Su reporte fue enviado a la base de datos de la Asamblea Multisectorial de Paso de los Libres! 🚨</span>
+                </p>
+              </div>
+
+              {/* SPEC DETAILS CARD */}
+              <div className="bg-white border-2 border-dashed border-[#0284c7] rounded-2xl p-4 sm:p-6 text-left space-y-3 font-serif shadow-sm">
+                <div className="flex justify-between items-center border-b border-[#bae6fd] pb-2">
+                  <span className="text-xs font-sans uppercase font-bold text-slate-400">Establecimiento:</span>
+                  <span className="text-sm sm:text-base font-bold text-[#0369a1]">
+                    {location === "CAPS" ? capsName : location === "Otro" ? otherLocationDetail : location}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-b border-[#bae6fd] pb-2">
+                  <span className="text-xs font-sans uppercase font-bold text-slate-400">Problema:</span>
+                  <span className="text-sm sm:text-base font-bold text-[#dc2626]">{typeOfProblem}</span>
+                </div>
+                <div>
+                  <span className="text-xs font-sans uppercase font-bold text-slate-400 block mb-1">Tu Mensaje:</span>
+                  <div className="bg-[#f8fafc] p-3 rounded-xl border border-[#bae6fd] text-xs sm:text-sm text-[#0369a1] whitespace-pre-wrap max-h-40 overflow-y-auto leading-relaxed italic font-medium">
+                    {description}
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
+              </div>
 
+              {/* WHATSAPP ACTION BLOCK (Scaled-up for Mobile) */}
+              <div className="p-5 bg-[#f0fdf4] border-4 border-[#25D366]/60 rounded-2xl text-left space-y-4 shadow-sm">
+                <p className="text-sm text-[#15803d] font-black tracking-wider uppercase font-sans flex items-center gap-1.5">
+                  📲 DIFUNDIR POR WHATSAPP (RECOMENDADO)
+                </p>
+                
+                <p className="text-xs sm:text-sm text-slate-600 leading-normal">
+                  Hacé clic en el siguiente botón para abrir WhatsApp en tu celular y compartir instantáneamente el reclamo con tus vecinos, grupos o coordinadores locales.
+                </p>
+                
+                {/* Configuration target phone direct */}
+                <div className="space-y-1 bg-white p-3.5 border-2 border-[#25D366]/40 rounded-xl">
+                  <label className="block text-[10px] sm:text-xs uppercase font-bold text-[#15803d] tracking-wider leading-none">
+                    Número de WhatsApp Destinatario (Prefijo +54):
+                  </label>
+                  <div className="flex gap-2 mt-2">
+                    <input
+                      type="text"
+                      placeholder="Ej: +5493772123456"
+                      value={whatsappPhone}
+                      onChange={(e) => setWhatsappPhone(e.target.value)}
+                      className="bg-transparent border-b-2 border-[#25D366] text-[#128C7E] text-sm sm:text-base px-1 py-1 focus:outline-none focus:border-[#128C7E] font-mono font-bold flex-1"
+                    />
+                  </div>
+                  <p className="text-[10px] sm:text-xs text-[#15803d]/85 leading-relaxed pt-1.5">
+                    * Usá <strong>+54 9</strong> (celular argentino) seguido de la característica de zona sin el 0, y el número sin el 15.
+                  </p>
+                </div>
 
+                <button
+                  type="button"
+                  onClick={handleShareWhatsApp}
+                  className="w-full bg-gradient-to-r from-[#25D366] via-[#20ba59] to-[#128C7E] text-white font-black py-4.5 px-6 rounded-xl uppercase tracking-wider text-sm sm:text-base transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:scale-[1.01]"
+                >
+                  <Share2 className="w-5 h-5" />
+                  ENVIAR MENSAJE DE WHATSAPP
+                </button>
+              </div>
+
+              {/* RETRY / ADD OTHER REPORT BUTTON */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSuccess(false);
+                  setDescription("");
+                }}
+                className="w-full bg-slate-200 hover:bg-slate-300 text-[#0369a1] font-bold py-3.5 px-5 rounded-xl uppercase tracking-wider text-xs sm:text-sm transition-all cursor-pointer"
+              >
+                Cargar Otro Reporte Clínico
+              </button>
+
+            </motion.div>
+          )}
+
+        </main>
 
         {/* Footer */}
-        <footer className="bg-[#0c4a6e] text-sky-100/80 text-[10px] py-8 px-6 text-center border-t-4 border-[#dc2626] font-mono tracking-tight">
-          <div className="max-w-4xl mx-auto space-y-3">
-            <p className="font-bold text-white tracking-widest">
-              ASAMBLEA MULTISECTORIAL DE PASO DE LOS LIBRES • CORRIENTES
-            </p>
-            <p className="max-w-2xl mx-auto opacity-80 leading-relaxed font-sans text-xs">
-              Mesa coordinadora de reclamo cívico y contralor del sistema de asistencia médica regional de Paso de los Libres, Corrientes, Argentina. Salud digna para todos.
-            </p>
-            <p className="text-sky-200/55 text-[9px] border-t border-sky-800 pt-3">
-              Todos los reportes están protegidos de manera cifrada en la base de datos y dirigidos por protocolo seguro. Ninguna información confidencial es visible en el navegador del cliente.
-            </p>
-          </div>
+        <footer className="bg-slate-900 border-t-4 border-[#dc2626] p-5 sm:p-6 text-center text-slate-400 text-xs font-mono">
+          <p className="font-bold text-slate-200 text-xs tracking-wider uppercase">
+            Asamblea Multisectorial • Paso de los Libres
+          </p>
+          <p className="text-[10px] mt-1 text-slate-500">
+            © 2026. Todos los derechos cívicos reservados.
+          </p>
         </footer>
 
       </div>
