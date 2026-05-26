@@ -6,10 +6,10 @@
   --font-serif: "Playfair Display", Georgia, serif;
   --font-mono: "JetBrains Mono", monospace;
   
-  --color-paper: #f8f6f2;
-  --color-editorial: #1c1c1c;
-  --color-ink-muted: #4a4a4a;
-  --color-border-editorial: #e5e1d8;
+  --color-paper: #f0f9ff;
+  --color-editorial: #0284c7;
+  --color-ink-muted: #0369a1;
+  --color-border-editorial: #bae6fd;
   --color-brand-active: #dc2626;
   --color-emerald-active: #15803d;
 }
@@ -32,7 +32,7 @@ h1, h2, h3, h4 {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f0ea;
+  background: #e0f2fe;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--color-border-editorial);
