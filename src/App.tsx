@@ -9,7 +9,8 @@ import {
   Loader2,
   FileText,
   Smartphone,
-  Monitor
+  Monitor,
+  ChevronDown
 } from "lucide-react";
 import logoUrl from "./assets/images/multisectorial_logo_1779809299141.png";
 
@@ -301,17 +302,22 @@ export default function App() {
                         <label className="block text-xs sm:text-sm font-bold uppercase tracking-wide text-[#0369a1]">
                           Seleccioná cuál CAPS:
                         </label>
-                        <select
-                          value={capsName}
-                          onChange={(e) => setCapsName(e.target.value)}
-                          className="w-full bg-white border-2 border-[#bae6fd] rounded-lg p-3 text-sm sm:text-base font-serif focus:outline-none focus:border-[#0284c7] text-[#0369a1] font-bold"
-                        >
-                          {CAPS_LIST.map((caps, index) => (
-                            <option key={index} value={caps}>
-                              {caps}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="relative">
+                          <select
+                            value={capsName}
+                            onChange={(e) => setCapsName(e.target.value)}
+                            className="w-full bg-white border-2 border-[#bae6fd] rounded-lg p-3.5 pr-12 text-sm sm:text-base font-serif focus:outline-none focus:border-[#0284c7] text-[#0369a1] font-black appearance-none cursor-pointer"
+                          >
+                            {CAPS_LIST.map((caps, index) => (
+                              <option key={index} value={caps}>
+                                {caps}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-[#16a34a]">
+                            <ChevronDown className="w-8 h-8 stroke-[3.5]" />
+                          </div>
+                        </div>
                       </div>
                     </motion.div>
                   )}
@@ -350,11 +356,11 @@ export default function App() {
                   Clasificación del Inconveniente
                 </label>
                 
-                <div className="bg-white border-2 border-[#bae6fd] rounded-xl p-2 focus-within:border-[#0284c7] transition-all">
+                <div className="relative bg-white border-2 border-[#bae6fd] rounded-xl focus-within:border-[#0284c7] transition-all">
                   <select
                     value={typeOfProblem}
                     onChange={(e) => setTypeOfProblem(e.target.value)}
-                    className="w-full bg-transparent text-sm sm:text-base md:text-md font-bold text-[#0369a1] p-3 border-none outline-none cursor-pointer focus:ring-0"
+                    className="w-full bg-transparent text-sm sm:text-base md:text-lg font-black text-[#0369a1] p-4 pr-12 border-none outline-none cursor-pointer focus:ring-0 appearance-none"
                   >
                     {PROBLEM_TYPES.map((pt, index) => (
                       <option key={index} value={pt}>
@@ -362,6 +368,9 @@ export default function App() {
                       </option>
                     ))}
                   </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-[#16a34a]">
+                    <ChevronDown className="w-8 h-8 stroke-[3.5]" />
+                  </div>
                 </div>
               </div>
 

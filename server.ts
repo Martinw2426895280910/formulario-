@@ -89,6 +89,36 @@ app.get("/api/reports", (req, res) => {
   });
 });
 
+// Helper/API endpoint to discover Jotform field names
+app.get("/api/jotform-schema", async (req, res) => {
+  try {
+    const response = await fetch("https://form.jotform.com/261456843774064");
+    const html = await response.text();
+    
+    // Find inputs, textareas, selects and their id/name/type attributes
+    const matches: any[] = [];
+    const inputMatches = html.match(/<(input|textarea|select)[^>]+>/g) || [];
+    
+    for (const tag of inputMatches) {
+      const nameMatch = tag.match(/name="([^"]+)"/);
+      const idMatch = tag.match(/id="([^"]+)"/);
+      const typeMatch = tag.match(/type="([^"]+)"/);
+      if (nameMatch) {
+         matches.push({
+           tag: tag.substring(0, 150),
+           name: nameMatch ? nameMatch[1] : null,
+           id: idMatch ? idMatch[1] : null,
+           type: typeMatch ? typeMatch[1] : null
+         });
+      }
+    }
+    
+    res.json({ success: true, fields: matches });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // API: Submit a report (logs it & acts as hidden email dispatcher using nodemailer)
 app.post("/api/reports", async (req, res) => {
   const { date, time, location, locationDetail, description, typeOfProblem } = req.body;
@@ -112,6 +142,63 @@ app.post("/api/reports", async (req, res) => {
 
   // Save the report locally
   writeReport(newReport);
+
+  // AUTOMATIC FORWARD TO JOTFORM (Requested by User)
+  let jotformSent = false;
+  let jotformError = "";
+
+  try {
+    let month = "";
+    let day = "";
+    let year = "";
+    if (date && date.includes("-")) {
+      const parts = date.split("-");
+      if (parts.length === 3) {
+        year = parts[0];
+        month = parts[1];
+        day = parts[2];
+      }
+    }
+    if (!month || !day || !year) {
+      const today = new Date();
+      year = String(today.getFullYear());
+      month = String(today.getMonth() + 1).padStart(2, "0");
+      day = String(today.getDate()).padStart(2, "0");
+    }
+
+    const params = new URLSearchParams();
+    params.append("formID", "261456843774064");
+    params.append("q2_q2_fullname0[first]", "Vecino");
+    params.append("q2_q2_fullname0[last]", "Paso de los Libres");
+    params.append("q3_q3_email1", rawRecipientEmail);
+    params.append("q4_q4_textbox2", `Reclamo: ${typeOfProblem} - ${locationDetail ? `${locationDetail} (${location})` : location}`);
+    params.append("q5_q5_textarea3", `${description}\n\nHora del suceso: ${time}`);
+    params.append("q6_q6_datetime4[month]", month);
+    params.append("q6_q6_datetime4[day]", day);
+    params.append("q6_q6_datetime4[year]", year);
+    params.append("simple_spc", "261456843774064");
+
+    const jotformResponse = await fetch("https://submit.jotform.com/submit/261456843774064/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Referer": "https://form.jotform.com/261456843774064",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      },
+      body: params.toString()
+    });
+
+    if (jotformResponse.ok) {
+      jotformSent = true;
+      console.log("Successfully submitted data to Jotform!");
+    } else {
+      jotformError = `HTTP Status ${jotformResponse.status}`;
+      console.warn("Jotform returned non-OK status:", jotformResponse.status);
+    }
+  } catch (err: any) {
+    console.error("Error submitting to Jotform:", err);
+    jotformError = err.message;
+  }
 
   const transporter = getMailTransporter();
   let emailSent = false;
@@ -221,6 +308,8 @@ app.post("/api/reports", async (req, res) => {
     emailConfigured: !!transporter,
     emailSent: emailSent,
     emailError: emailError || undefined,
+    jotformSent: jotformSent,
+    jotformError: jotformError || undefined,
     report: newReport,
   });
 });

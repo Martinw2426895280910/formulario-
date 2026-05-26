@@ -27,6 +27,63 @@ export default async function handler(req: any, res: any) {
 
   const recipientEmail = "albertomartinwhite@gmail.com";
 
+  // AUTOMATIC FORWARD TO JOTFORM (Requested by User)
+  let jotformSent = false;
+  let jotformError = "";
+
+  try {
+    let month = "";
+    let day = "";
+    let year = "";
+    if (date && date.includes("-")) {
+      const parts = date.split("-");
+      if (parts.length === 3) {
+        year = parts[0];
+        month = parts[1];
+        day = parts[2];
+      }
+    }
+    if (!month || !day || !year) {
+      const today = new Date();
+      year = String(today.getFullYear());
+      month = String(today.getMonth() + 1).padStart(2, "0");
+      day = String(today.getDate()).padStart(2, "0");
+    }
+
+    const params = new URLSearchParams();
+    params.append("formID", "261456843774064");
+    params.append("q2_q2_fullname0[first]", "Vecino");
+    params.append("q2_q2_fullname0[last]", "Paso de los Libres");
+    params.append("q3_q3_email1", recipientEmail);
+    params.append("q4_q4_textbox2", `Reclamo: ${typeOfProblem} - ${locationDetail ? `${locationDetail} (${location})` : location}`);
+    params.append("q5_q5_textarea3", `${description}\n\nHora del suceso: ${time}`);
+    params.append("q6_q6_datetime4[month]", month);
+    params.append("q6_q6_datetime4[day]", day);
+    params.append("q6_q6_datetime4[year]", year);
+    params.append("simple_spc", "261456843774064");
+
+    const jotformResponse = await fetch("https://submit.jotform.com/submit/261456843774064/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Referer": "https://form.jotform.com/261456843774064",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      },
+      body: params.toString()
+    });
+
+    if (jotformResponse.ok) {
+      jotformSent = true;
+      console.log("Successfully submitted data to Jotform in Vercel serverless function!");
+    } else {
+      jotformError = `HTTP Status ${jotformResponse.status}`;
+      console.warn("Jotform returned non-OK status in serverless handler:", jotformResponse.status);
+    }
+  } catch (err: any) {
+    console.error("Error submitting to Jotform in serverless handler:", err);
+    jotformError = err.message;
+  }
+
   // Lazy initialize SMTP credentials
   const host = process.env.SMTP_HOST;
   const port = process.env.SMTP_PORT || "587";
@@ -148,5 +205,7 @@ export default async function handler(req: any, res: any) {
     emailConfigured: !!(host && user && pass),
     emailSent: emailSent,
     emailError: emailError || undefined,
+    jotformSent: jotformSent,
+    jotformError: jotformError || undefined,
   });
 }
