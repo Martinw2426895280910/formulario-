@@ -73,6 +73,7 @@ export default function App() {
   const [aiMessage, setAiMessage] = useState<string>("");
   const [isSubmitLoading, setIsSubmitLoading] = useState<boolean>(false);
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
+  const [whatsappPhone, setWhatsappPhone] = useState<string>("+549");
 
 
 
@@ -214,7 +215,16 @@ export default function App() {
   // Share via WhatsApp
   const handleShareWhatsApp = () => {
     const text = encodeURIComponent(getShareText());
-    const url = `https://api.whatsapp.com/send?text=${text}`;
+    // Clean phone number from spaces, dashes, parentheses and leave only + and numbers
+    const cleanPhone = whatsappPhone.replace(/[^0-9+]/g, "");
+    
+    // Check if phone was filled with something more than just "+54" or "+549" or is empty
+    const hasValidPhone = cleanPhone && cleanPhone !== "+54" && cleanPhone !== "+549" && cleanPhone !== "+" && cleanPhone.length > 5;
+    
+    const url = hasValidPhone
+      ? `https://api.whatsapp.com/send?phone=${encodeURIComponent(cleanPhone)}&text=${text}`
+      : `https://api.whatsapp.com/send?text=${text}`;
+      
     window.open(url, "_blank");
   };
 
@@ -557,7 +567,7 @@ export default function App() {
               ) : (
                 /* Editorial Redirection and Success Panel */
                 <div className="space-y-6 py-6 border-2 border-[#0284c7] p-6 sm:p-10 bg-[#f0f9ff] text-center">
-                  <div className="w-16 h-16 bg-emerald-100 text-[#15803d] rounded-full flex items-center justify-center mx-auto border-2 border-[#0284c7] shadow-sm">
+                  <div className="w-16 h-16 bg-emerald-100 text-[#15803d] rounded-full flex items-center justify-center mx-auto border-2 border-[#0284c7] shadow-sm animate-pulse">
                     <CheckCircle2 className="w-9 h-9" />
                   </div>
 
@@ -567,6 +577,13 @@ export default function App() {
                     </h3>
                     <p className="text-sm text-[#0369a1] leading-relaxed max-w-lg mx-auto">
                       La información ha sido guardada en los servidores de control de la Asamblea y despachada herméticamente por email a la coordinación de la <strong className="text-[#0284c7] font-serif">Asamblea Multisectorial de Paso de los Libres</strong>.
+                    </p>
+                  </div>
+
+                  {/* PROMINENT DATABASE SUCESS BANNER REQUESTED BY USER */}
+                  <div className="bg-[#ecfdf5] border-2 border-[#15803d] p-5 shadow-sm text-center">
+                    <p className="text-base sm:text-lg font-black text-[#15803d] uppercase tracking-tight leading-snug font-sans flex items-center justify-center gap-2">
+                      <span>¡Su reporte fue enviado a la base de datos de la Asamblea Multisectorial de Paso de los Libres! 🚨</span>
                     </p>
                   </div>
 
@@ -593,20 +610,40 @@ export default function App() {
                   <div className="pt-2 max-w-md mx-auto space-y-4">
                     
                     {/* WhatsApp Block */}
-                    <div className="p-4 bg-[#f0fdf4] border-2 border-[#25D366]/60 text-left space-y-2">
+                    <div className="p-4 bg-[#f0fdf4] border-2 border-[#25D366]/60 text-left space-y-3">
                       <p className="text-xs text-[#15803d] font-bold font-serif leading-normal uppercase">
                         📢 PASO 1: DIFUNDIR POR WHATSAPP
                       </p>
                       <p className="text-[11px] text-[#15803d]/90 leading-relaxed font-sans">
-                        Hacé clic abajo para abrir WhatsApp y compartir instantáneamente el reclamo con tus vecinos, grupos o coordinadores.
+                        Hacé clic abajo para abrir WhatsApp y compartir instantáneamente el reclamo con tus vecinos, grupos o coordinadores. 
                       </p>
+                      
+                      {/* WhatsApp Recipient Number Configuration Input */}
+                      <div className="space-y-1 bg-white p-2.5 border border-[#25D366]/40">
+                        <label className="block text-[9px] uppercase font-bold text-[#15803d] tracking-wider leading-none">
+                          Número de WhatsApp Destinatario (Prefijo +54):
+                        </label>
+                        <div className="flex gap-2 mt-1">
+                          <input
+                            type="text"
+                            placeholder="Ej: +5493772123456"
+                            value={whatsappPhone}
+                            onChange={(e) => setWhatsappPhone(e.target.value)}
+                            className="bg-transparent border-b-2 border-[#25D366] text-[#128C7E] text-xs px-1 py-0.5 focus:outline-none focus:border-[#128C7E] font-mono font-bold flex-1"
+                          />
+                        </div>
+                        <p className="text-[9px] text-[#15803d]/80 leading-normal font-sans pt-0.5">
+                          * Usá <strong>+54 9</strong> (código del país y celular argentino) seguido del código de área local sin el 0 y el número sin el 15.
+                        </p>
+                      </div>
+
                       <button
                         type="button"
                         onClick={handleShareWhatsApp}
                         className="w-full bg-gradient-to-r from-[#25D366] via-[#20ba59] to-[#128C7E] text-white font-black py-4 px-5 uppercase tracking-widest text-[11px] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:scale-[1.01] ring-2 ring-[#25D366]/30"
                       >
                         <Share2 className="w-4 h-4" />
-                        COMPARTIR POR WHATSAPP
+                        ENVIAR MENSAJE DE WHATSAPP
                       </button>
                     </div>
 
