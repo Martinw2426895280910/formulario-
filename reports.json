@@ -1,0 +1,32 @@
+[
+  {
+    "id": "1",
+    "date": "2026-05-25",
+    "time": "10:30",
+    "location": "CAPS",
+    "locationDetail": "CAPS N° 2 - Barrio Estación",
+    "typeOfProblem": "Falta de Medicamentos / Remedios",
+    "description": "Fui a buscar la medicación crónica de mi abuelo para la diabetes (Metformina) y nos dijeron que no tienen stock, que no saben cuándo entra. Es el segundo mes consecutivo que pasa esto.",
+    "createdAt": "2026-05-25T13:30:00.000Z"
+  },
+  {
+    "id": "2",
+    "date": "2026-05-24",
+    "time": "15:45",
+    "location": "Hospital Público San José",
+    "locationDetail": "",
+    "typeOfProblem": "Mala Atención / Trato Inadecuado",
+    "description": "Estuvimos esperando más de 4 horas en la guardia con mi nene con fiebre alta. Nadie nos daba una respuesta, la atención del personal administrativo fue muy descortés cuando reclamamos.",
+    "createdAt": "2026-05-24T18:45:00.000Z"
+  },
+  {
+    "id": "3",
+    "date": "2026-05-22",
+    "time": "08:15",
+    "location": "CAPS",
+    "locationDetail": "CAPS N° 5 - Barrio Ombucito",
+    "typeOfProblem": "Falta de Personal / Médicos de Guardia",
+    "description": "Llegué temprano para conseguir turno para el pediatra y nos informaron que el pediatra faltaba y que no hay reemplazo. Tuvimos que devolvernos al barrio sin atención.",
+    "createdAt": "2026-05-22T11:15:00.000Z"
+  }
+]

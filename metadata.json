@@ -1,0 +1,6 @@
+{
+  "name": "Denuncias Salud - Paso de los Libres",
+  "description": "Planilla digital de la Asamblea Multisectorial de Paso de los Libres para registrar e informar de faltas de remedios y mala atención en CAPS y Hospitales.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
