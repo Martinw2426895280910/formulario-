@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import emailjs from "@emailjs/browser";
 import { 
   AlertTriangle, 
   MapPin, 
@@ -122,6 +123,29 @@ export default function App() {
       }
     } catch (error) {
       console.warn("Falla de red para el backend directa, guardando localmente en el dispositivo:", error);
+    }
+
+    // Send email using EmailJS (Requested by User)
+    try {
+      const emailParams = {
+        date: times.date,
+        time: times.time,
+        location: location,
+        locationDetail: locDetail || "Hospital Público San José",
+        typeOfProblem: typeOfProblem,
+        description: description,
+        to_email: "albertomartinwhite@gmail.com"
+      };
+
+      const result = await emailjs.send(
+        "service_96gyii1",
+        "template_1gob1i5",
+        emailParams,
+        "UFMJTU-DM4AcDqxVX"
+      );
+      console.log("EmailJS response:", result.status, result.text);
+    } catch (error) {
+      console.error("Error al enviar con EmailJS:", error);
     }
 
     // Save report in local devices for state consistency and fallback
