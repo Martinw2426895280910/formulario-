@@ -140,8 +140,9 @@ export default function App() {
         const emailParams = {
           date: times.date,
           time: times.time,
-          location: location,
+          location: location === "Hospital Público San José" ? "Hospital Público San José" : location === "CAPS" ? "CAPS del Barrio" : "Otro Lugar",
           locationDetail: locDetail || "Hospital Público San José",
+          location_detail: locDetail || "Hospital Público San José",
           typeOfProblem: typeOfProblem,
           description: description,
           phone: formattedPhone,
