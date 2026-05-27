@@ -27,8 +27,7 @@ const CAPS_LIST = [
   "CAPS N° 8 - Barrio Las Flores (Municipal)",
   "CAPS N° 9 - Barrio Joaquín Madariaga (Provincial)",
   "CAPS N° 10 - Barrio Raúl Alfonsín (Plurianual) (Municipal)",
-  "CAPS N° 11 - Barrio Esteban Alisio 630 (Secretaría de Salud) (Municipal)",
-  "CAPS N° 12 - Barrio Ponce (Provincial)"
+  "CAPS N° 11 - Barrio Esteban Alisio 630 (Secretaría de Salud) (Municipal)"
 ];
 
 const PROBLEM_TYPES = [
@@ -246,7 +245,7 @@ export default function App() {
             
             <div className="space-y-1 mt-1">
               <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tight font-serif leading-tight">
-                ASAMBLEA <span className="text-red-400">MULTISECTORIAL</span>
+                ASAMBLEA <span className="text-white">MULTISECTORIAL</span>
               </h1>
               <p className="text-xs sm:text-sm uppercase tracking-widest font-mono font-bold text-sky-200">
                 Paso de los Libres, Corrientes
