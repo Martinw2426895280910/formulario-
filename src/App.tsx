@@ -51,6 +51,7 @@ export default function App() {
   const [otherLocationDetail, setOtherLocationDetail] = useState<string>("");
   const [typeOfProblem, setTypeOfProblem] = useState<string>(PROBLEM_TYPES[0]);
   const [description, setDescription] = useState<string>("");
+  const [phoneNumber, setPhoneNumber] = useState<string>("");
 
   // Target WhatsApp
   const [whatsappPhone, setWhatsappPhone] = useState<string>("+549");
@@ -78,6 +79,7 @@ export default function App() {
            `-----------------------------------------\n` +
            `📍 *Establecimiento:* ${locDetail}\n` +
            `📅 *Fecha:* ${times.date}  |  🕒 *Hora:* ${times.time}\n` +
+           `📞 *Contacto:* +54 ${phoneNumber.trim() || "(No especificado)"}\n` +
            `⚠️ *Problema:* ${typeOfProblem}\n\n` +
            `💬 *Testimonio / Suceso:*\n` +
            `"${description.trim()}"\n\n` +
@@ -99,66 +101,74 @@ export default function App() {
 
     const locDetail = location === "CAPS" ? capsName : location === "Otro" ? otherLocationDetail : "";
     const times = getLocalDateTimePayload();
+    const formattedPhone = phoneNumber.trim() ? `+54 ${phoneNumber.trim()}` : "No especificado";
     const payload = {
       date: times.date,
       time: times.time,
       location,
       locationDetail: locDetail,
       typeOfProblem,
-      description
+      description,
+      phone: formattedPhone
     };
 
     try {
-      // Dispatch payload securely to back-end (which calls the server email/FormSubmit dispatch)
-      const res = await fetch("/api/reports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const contentType = res.headers.get("content-type");
-      if (res.ok && contentType && contentType.includes("application/json")) {
-        const data = await res.json();
-        console.log("Servidor procesó la denuncia con éxito:", data);
+      // Dispatch payload securely to back-end
+      try {
+        const res = await fetch("/api/reports", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const contentType = res.headers.get("content-type");
+        if (res.ok && contentType && contentType.includes("application/json")) {
+          const data = await res.json();
+          console.log("Servidor procesó la denuncia con éxito:", data);
+        }
+      } catch (backendError) {
+        console.warn("Falla al reportar al backend, ignorando para asegurar continuidad:", backendError);
       }
-    } catch (error) {
-      console.warn("Falla de red para el backend directa, guardando localmente en el dispositivo:", error);
+
+      // Send email using EmailJS (Requested by User)
+      try {
+        const emailParams = {
+          date: times.date,
+          time: times.time,
+          location: location,
+          locationDetail: locDetail || "Hospital Público San José",
+          typeOfProblem: typeOfProblem,
+          description: description,
+          phone: formattedPhone,
+          to_email: "albertomartinwhite@gmail.com"
+        };
+
+        const result = await emailjs.send(
+          "service_96gyii1",
+          "template_1gob1i5",
+          emailParams,
+          "UFMJTU-DM4AcDqxVX"
+        );
+        console.log("EmailJS response:", result.status, result.text);
+      } catch (emailError) {
+        console.error("Error al enviar con EmailJS:", emailError);
+      }
+
+      // Save report in local devices for state consistency and fallback
+      try {
+        const existing = localStorage.getItem("asamblea_reports") || "[]";
+        const list = JSON.parse(existing);
+        list.push({ ...payload, id: Date.now() });
+        localStorage.setItem("asamblea_reports", JSON.stringify(list));
+      } catch (err) {
+        console.error("Local storage sync bypassed:", err);
+      }
+    } catch (outerError) {
+      console.error("Error inesperado en handleSubmit:", outerError);
+    } finally {
+      // Ensure success view is always triggered regardless of EmailJS/backend responses
+      setShowSuccess(true);
+      setIsSubmitLoading(false);
     }
-
-    // Send email using EmailJS (Requested by User)
-    try {
-      const emailParams = {
-        date: times.date,
-        time: times.time,
-        location: location,
-        locationDetail: locDetail || "Hospital Público San José",
-        typeOfProblem: typeOfProblem,
-        description: description,
-        to_email: "albertomartinwhite@gmail.com"
-      };
-
-      const result = await emailjs.send(
-        "service_96gyii1",
-        "template_1gob1i5",
-        emailParams,
-        "UFMJTU-DM4AcDqxVX"
-      );
-      console.log("EmailJS response:", result.status, result.text);
-    } catch (error) {
-      console.error("Error al enviar con EmailJS:", error);
-    }
-
-    // Save report in local devices for state consistency and fallback
-    try {
-      const existing = localStorage.getItem("asamblea_reports") || "[]";
-      const list = JSON.parse(existing);
-      list.push({ ...payload, id: Date.now() });
-      localStorage.setItem("asamblea_reports", JSON.stringify(list));
-    } catch (err) {
-      console.error("Local storage sync bypassed:", err);
-    }
-
-    setShowSuccess(true);
-    setIsSubmitLoading(false);
   };
 
   const handleShareWhatsApp = () => {
@@ -398,11 +408,43 @@ export default function App() {
               </div>
 
               {/* =======================================================
-                  VENTANA PARA DESCRIBIR EL INCONVENIENTE
+                  VENTANA PARA NÚMERO DE TELÉFONO (ARGENTINA)
                ======================================================= */}
               <div className="space-y-3">
                 <label className="block text-lg sm:text-xl font-black uppercase text-[#0284c7] tracking-wider leading-snug flex items-center gap-2">
                   <span className="bg-[#0284c7] text-white w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-sm font-sans shrink-0">3</span>
+                  Teléfono de Contacto (Argentina)
+                </label>
+                <div className="bg-[#f0f9ff] p-4 border-2 border-[#bae6fd] rounded-xl space-y-2">
+                  <div className="flex gap-2">
+                    <div className="bg-white border-2 border-[#bae6fd] rounded-lg p-3 text-sm sm:text-base font-bold text-[#0369a1] flex items-center shrink-0">
+                      🇦🇷 +54
+                    </div>
+                    <input
+                      type="tel"
+                      required
+                      value={phoneNumber}
+                      onChange={(e) => {
+                        // Accept digits, spaces, hyphens
+                        const val = e.target.value.replace(/[^0-9 -]/g, "");
+                        setPhoneNumber(val);
+                      }}
+                      placeholder="9 y característica sin 0, más tu número sin 15"
+                      className="w-full bg-white border-2 border-[#bae6fd] rounded-lg p-3 text-sm sm:text-base focus:outline-none focus:border-[#0284c7] text-[#0369a1] font-bold placeholder-sky-900/40"
+                    />
+                  </div>
+                  <p className="text-[10px] sm:text-xs text-[#0369a1]/80 leading-relaxed font-mono">
+                    * Ej: Escribir <strong>9 3772 123456</strong> para Paso de los Libres (móviles).
+                  </p>
+                </div>
+              </div>
+
+              {/* =======================================================
+                  VENTANA PARA DESCRIBIR EL INCONVENIENTE
+               ======================================================= */}
+              <div className="space-y-3">
+                <label className="block text-lg sm:text-xl font-black uppercase text-[#0284c7] tracking-wider leading-snug flex items-center gap-2">
+                  <span className="bg-[#0284c7] text-white w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-sm font-sans shrink-0">4</span>
                   Descripción del Caso o Relato
                 </label>
 
@@ -488,6 +530,10 @@ export default function App() {
                 <div className="flex justify-between items-center border-b border-[#bae6fd] pb-2">
                   <span className="text-xs font-sans uppercase font-bold text-slate-400">Problema:</span>
                   <span className="text-sm sm:text-base font-bold text-[#dc2626]">{typeOfProblem}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-[#bae6fd] pb-2">
+                  <span className="text-xs font-sans uppercase font-bold text-slate-400">Teléfono Afectado:</span>
+                  <span className="text-sm sm:text-base font-bold text-[#0284c7]">+54 {phoneNumber.trim() || "(No especificado)"}</span>
                 </div>
                 <div>
                   <span className="text-xs font-sans uppercase font-bold text-slate-400 block mb-1">Tu Mensaje:</span>

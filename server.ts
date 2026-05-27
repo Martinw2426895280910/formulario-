@@ -121,7 +121,7 @@ app.get("/api/jotform-schema", async (req, res) => {
 
 // API: Submit a report (logs it & acts as hidden email dispatcher using nodemailer)
 app.post("/api/reports", async (req, res) => {
-  const { date, time, location, locationDetail, description, typeOfProblem } = req.body;
+  const { date, time, location, locationDetail, description, typeOfProblem, phone } = req.body;
 
   if (!date || !time || !location || !description) {
     return res.status(400).json({ error: "Faltan campos obligatorios" });
@@ -137,6 +137,7 @@ app.post("/api/reports", async (req, res) => {
     locationDetail: locationDetail || "",
     typeOfProblem: typeOfProblem || "No especificado",
     description,
+    phone: phone || "No especificado",
     createdAt: new Date().toISOString(),
   };
 
@@ -172,7 +173,7 @@ app.post("/api/reports", async (req, res) => {
     params.append("q2_q2_fullname0[last]", "Paso de los Libres");
     params.append("q3_q3_email1", rawRecipientEmail);
     params.append("q4_q4_textbox2", `Reclamo: ${typeOfProblem} - ${locationDetail ? `${locationDetail} (${location})` : location}`);
-    params.append("q5_q5_textarea3", `${description}\n\nHora del suceso: ${time}`);
+    params.append("q5_q5_textarea3", `${description}\n\nHora del suceso: ${time}\nTeléfono de Contacto: ${phone || "No especificado"}`);
     params.append("q6_q6_datetime4[month]", month);
     params.append("q6_q6_datetime4[day]", day);
     params.append("q6_q6_datetime4[year]", year);
@@ -213,6 +214,7 @@ app.post("/api/reports", async (req, res) => {
         text: `NUEVA DENUNCIA REGISTRADA\n\n` +
               `Fecha del suceso: ${date}\n` +
               `Hora aproximada: ${time}\n` +
+              `Teléfono del Afectado: ${phone || "No especificado"}\n` +
               `Lugar/Establecimiento: ${location} ${locationDetail ? `(${locationDetail})` : ""}\n` +
               `Categoría de inconveniente: ${typeOfProblem}\n\n` +
               `Descripción/Testimonio:\n` +
@@ -236,6 +238,10 @@ app.post("/api/reports", async (req, res) => {
                 <tr>
                   <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-weight: bold; font-size: 12px; font-family: monospace; text-transform: uppercase;">Hora Aproximada:</td>
                   <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-size: 14px;">${time}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-weight: bold; font-size: 12px; font-family: monospace; text-transform: uppercase;">Teléfono de Contacto:</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-size: 14px; font-weight: bold; color: #0284c7;">${phone || "No especificado"}</td>
                 </tr>
                 <tr>
                   <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-weight: bold; font-size: 12px; font-family: monospace; text-transform: uppercase;">Establecimiento:</td>
@@ -279,6 +285,7 @@ app.post("/api/reports", async (req, res) => {
           "_template": "table",
           "Fecha del Suceso": date,
           "Hora Aproximada": time,
+          "Teléfono del Afectado": phone || "No especificado",
           "Lugar / Establecimiento": `${location} ${locationDetail ? `(${locationDetail})` : ""}`,
           "Categoría de Reclamo": typeOfProblem,
           "Relato o Comentario Directo": description

@@ -19,7 +19,7 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
 
-  const { date, time, location, locationDetail, description, typeOfProblem } = req.body;
+  const { date, time, location, locationDetail, description, typeOfProblem, phone } = req.body;
 
   if (!date || !time || !location || !description) {
     return res.status(400).json({ error: "Faltan campos obligatorios" });
@@ -56,7 +56,7 @@ export default async function handler(req: any, res: any) {
     params.append("q2_q2_fullname0[last]", "Paso de los Libres");
     params.append("q3_q3_email1", recipientEmail);
     params.append("q4_q4_textbox2", `Reclamo: ${typeOfProblem} - ${locationDetail ? `${locationDetail} (${location})` : location}`);
-    params.append("q5_q5_textarea3", `${description}\n\nHora del suceso: ${time}`);
+    params.append("q5_q5_textarea3", `${description}\n\nHora del suceso: ${time}\nTeléfono de Contacto: ${phone || "No especificado"}`);
     params.append("q6_q6_datetime4[month]", month);
     params.append("q6_q6_datetime4[day]", day);
     params.append("q6_q6_datetime4[year]", year);
@@ -112,6 +112,7 @@ export default async function handler(req: any, res: any) {
         text: `NUEVA DENUNCIA REGISTRADA\n\n` +
               `Fecha del suceso: ${date}\n` +
               `Hora aproximada: ${time}\n` +
+              `Teléfono del Afectado: ${phone || "No especificado"}\n` +
               `Lugar/Establecimiento: ${location} ${locationDetail ? `(${locationDetail})` : ""}\n` +
               `Categoría de inconveniente: ${typeOfProblem}\n\n` +
               `Descripción/Testimonio:\n` +
@@ -135,6 +136,10 @@ export default async function handler(req: any, res: any) {
                 <tr>
                   <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-weight: bold; font-size: 12px; font-family: monospace; text-transform: uppercase;">Hora Aproximada:</td>
                   <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-size: 14px;">${time}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-weight: bold; font-size: 12px; font-family: monospace; text-transform: uppercase;">Teléfono de Contacto:</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-size: 14px; font-weight: bold; color: #0284c7;">${phone || "No especificado"}</td>
                 </tr>
                 <tr>
                   <td style="padding: 10px; border-bottom: 1px solid #e5e1d8; font-weight: bold; font-size: 12px; font-family: monospace; text-transform: uppercase;">Establecimiento:</td>
@@ -177,6 +182,7 @@ export default async function handler(req: any, res: any) {
           "_template": "table",
           "Fecha del Suceso": date,
           "Hora Aproximada": time,
+          "Teléfono del Afectado": phone || "No especificado",
           "Lugar / Establecimiento": `${location} ${locationDetail ? `(${locationDetail})` : ""}`,
           "Categoría de Reclamo": typeOfProblem,
           "Relato o Comentario Directo": description
