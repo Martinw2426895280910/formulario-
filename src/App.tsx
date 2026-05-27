@@ -131,6 +131,12 @@ export default function App() {
 
       // Send email using EmailJS (Requested by User)
       try {
+        console.log("Iniciando envío con EmailJS...", {
+          service_id: "service_96gyii1",
+          template_id: "template_1gob1i5",
+          publicKey: "UFMJTU-DM4AcDqxVX"
+        });
+        
         const emailParams = {
           date: times.date,
           time: times.time,
@@ -148,9 +154,14 @@ export default function App() {
           emailParams,
           "UFMJTU-DM4AcDqxVX"
         );
-        console.log("EmailJS response:", result.status, result.text);
-      } catch (emailError) {
+        console.log("EmailJS exitoso. Respuesta:", result.status, result.text);
+        
+        // Alerta temporal solicitada para verificar que EmailJS está respondiendo bien en Vercel
+        alert(`✅ EmailJS enviado con éxito!\nEstado: ${result.status}\nMensaje: ${result.text}`);
+      } catch (emailError: any) {
         console.error("Error al enviar con EmailJS:", emailError);
+        // Alerta temporal de error para comprobar fallos de configuración de EmailJS en Vercel
+        alert(`⚠️ EmailJS falló en producción: ${emailError?.text || emailError?.message || JSON.stringify(emailError)}`);
       }
 
       // Save report in local devices for state consistency and fallback
@@ -514,8 +525,11 @@ export default function App() {
 
               {/* PROMINENT DATABASE SUCCESS BANNER REQUESTED BY USER */}
               <div className="bg-[#ecfdf5] border-4 border-[#15803d] p-5 rounded-2xl shadow-md text-center">
-                <p className="text-md sm:text-xl font-black text-[#15803d] uppercase tracking-normal leading-relaxed font-sans flex items-center justify-center gap-2">
-                  <span>¡Su reporte fue enviado a la base de datos de la Asamblea Multisectorial de Paso de los Libres! 🚨</span>
+                <p className="text-md sm:text-xl font-black text-[#15803d] tracking-normal leading-relaxed font-sans flex flex-col items-center justify-center gap-2">
+                  <span>✅ Su reporte fue enviado exitosamente.</span>
+                  <span className="text-sm sm:text-base font-bold text-slate-700 font-sans tracking-wide">
+                    Gracias por contribuir a mejorar la salud en Paso de los Libres.
+                  </span>
                 </p>
               </div>
 
