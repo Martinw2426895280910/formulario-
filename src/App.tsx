@@ -40,6 +40,74 @@ const PROBLEM_TYPES = [
   "Otro Problema de Salud Pública"
 ];
 
+// Sound effect synthesizer functions using Web Audio API
+const playIntenseLsaSound = () => {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const now = ctx.currentTime;
+    
+    // Play a high energy dual-tone synthesized sequence with exponential ramps
+    const playOsci = (freq: number, type: OscillatorType, startTime: number, duration: number, vol: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, startTime);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.25, startTime + duration);
+      
+      gain.gain.setValueAtTime(vol, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+    
+    // Vibrant arpeggio for high accessibility visibility: C5 -> E5 -> G5 -> C6
+    playOsci(523.25, "sine", now, 0.4, 0.15);       // C5
+    playOsci(659.25, "sine", now + 0.08, 0.4, 0.15);  // E5
+    playOsci(783.99, "sine", now + 0.16, 0.4, 0.15);  // G5
+    playOsci(1046.50, "sine", now + 0.24, 0.5, 0.20); // C6
+    
+    // Base undertone for thickness
+    playOsci(261.63, "triangle", now, 0.6, 0.12);     // C4
+    playOsci(392.00, "triangle", now + 0.12, 0.6, 0.10); // G4
+  } catch (err) {
+    console.warn("AudioContext not supported or gesture needed:", err);
+  }
+};
+
+const playStandardButtonSound = () => {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const now = ctx.currentTime;
+    
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(600, now);
+    osc.frequency.exponentialRampToValueAtTime(300, now + 0.12);
+    
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start(now);
+    osc.stop(now + 0.12);
+  } catch (err) {
+    console.warn("AudioContext not supported or gesture needed:", err);
+  }
+};
+
 export default function App() {
   // UI views and Device Simulator Mode (Móvil vs Escritorio)
   const [viewMode, setViewMode] = useState<"movil" | "escritorio">("movil");
@@ -93,6 +161,7 @@ export default function App() {
   // Handle Form Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    playStandardButtonSound();
     if (!description.trim()) {
       alert("Por favor, escribe un comentario o detalle sobre tu caso.");
       return;
@@ -185,6 +254,7 @@ export default function App() {
   };
 
   const handleShareWhatsApp = () => {
+    playStandardButtonSound();
     const text = encodeURIComponent(getShareText());
     const cleanPhone = whatsappPhone.replace(/[^0-9+]/g, "");
     const hasValidPhone = cleanPhone && cleanPhone !== "+54" && cleanPhone !== "+549" && cleanPhone !== "+" && cleanPhone.length > 5;
@@ -195,7 +265,8 @@ export default function App() {
   };
 
   const handleConnectLsaSpecialist = () => {
-    const text = encodeURIComponent("hola quiero comunicarme con la especialista");
+    playIntenseLsaSound();
+    const text = encodeURIComponent("🤟📲 Hola! Quiero comunicarme con la especialista de la Asamblea Multisectorial");
     const url = `https://wa.me/5493772631310?text=${text}`;
     window.open(url, "_blank");
   };
@@ -211,7 +282,7 @@ export default function App() {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => setViewMode("movil")}
+            onClick={() => { playStandardButtonSound(); setViewMode("movil"); }}
             className={`px-3.5 py-2 text-xs sm:text-sm font-black uppercase tracking-wider transition-all rounded-lg cursor-pointer flex items-center gap-1.5 ${
               viewMode === "movil"
                 ? "bg-[#16a34a] text-white shadow-md scale-[1.02]"
@@ -224,7 +295,7 @@ export default function App() {
           
           <button
             type="button"
-            onClick={() => setViewMode("escritorio")}
+            onClick={() => { playStandardButtonSound(); setViewMode("escritorio"); }}
             className={`px-3.5 py-2 text-xs sm:text-sm font-black uppercase tracking-wider transition-all rounded-lg cursor-pointer flex items-center gap-1.5 ${
               viewMode === "escritorio"
                 ? "bg-[#0284c7] text-white shadow-md scale-[1.02]"
@@ -302,12 +373,15 @@ export default function App() {
                   referrerPolicy="no-referrer"
                 />
               </div>
-              <div className="space-y-0.5 font-sans">
+              <div className="space-y-1 font-sans">
                 <h4 className="text-xs sm:text-sm font-black text-[#0369a1] uppercase tracking-wider flex items-center gap-1.5 leading-tight">
-                  👂 Comunicación LSA (Lengua de Señas)
+                  🤟 Comunicación en LSA (Lengua de Señas Argentina)
                 </h4>
-                <p className="text-[10px] sm:text-xs text-[#0369a1] font-medium leading-snug">
-                  ¿Sos sordo/a o hipoacúsico/a? Chateá o hacé videollamada de señas con la especialista en Paso de los Libres.
+                <p className="text-[11px] sm:text-xs font-black text-[#15803d] leading-none mb-0.5">
+                  ¿Sos una persona sorda o hipoacúsica?
+                </p>
+                <p className="text-[10px] sm:text-xs font-bold text-slate-700 leading-snug">
+                  📲 Chateá o realizá una videollamada en lengua de señas con una especialista en Paso de los Libres.
                 </p>
               </div>
             </div>
@@ -340,7 +414,7 @@ export default function App() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                   <button
                     type="button"
-                    onClick={() => setLocation("Hospital Público San José")}
+                    onClick={() => { playStandardButtonSound(); setLocation("Hospital Público San José"); }}
                     className={`p-4 text-sm sm:text-base font-black uppercase tracking-wide transition-all rounded-xl border-2 cursor-pointer text-center ${
                       location === "Hospital Público San José"
                         ? "bg-[#0284c7] text-white border-[#0284c7] shadow-md scale-[1.01]"
@@ -352,7 +426,7 @@ export default function App() {
                   
                   <button
                     type="button"
-                    onClick={() => setLocation("CAPS")}
+                    onClick={() => { playStandardButtonSound(); setLocation("CAPS"); }}
                     className={`p-4 text-sm sm:text-base font-black uppercase tracking-wide transition-all rounded-xl border-2 cursor-pointer text-center ${
                       location === "CAPS"
                         ? "bg-[#0284c7] text-white border-[#0284c7] shadow-md scale-[1.01]"
@@ -364,7 +438,7 @@ export default function App() {
                   
                   <button
                     type="button"
-                    onClick={() => setLocation("Otro")}
+                    onClick={() => { playStandardButtonSound(); setLocation("Otro"); }}
                     className={`p-4 text-sm sm:text-base font-black uppercase tracking-wide transition-all rounded-xl border-2 cursor-pointer text-center ${
                       location === "Otro"
                         ? "bg-[#0284c7] text-white border-[#0284c7] shadow-md scale-[1.01]"
@@ -642,6 +716,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => {
+                  playStandardButtonSound();
                   setShowSuccess(false);
                   setDescription("");
                 }}
