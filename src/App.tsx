@@ -14,6 +14,7 @@ import {
   ChevronDown
 } from "lucide-react";
 import logoUrl from "./assets/images/multisectorial_logo_1779809299141.png";
+import lsaBadgeUrl from "./assets/images/lsa_badge_1780080111024.png";
 
 const CAPS_LIST = [
   "CAPS N° 1 - Barrio Simeón Payba (Municipal)",
@@ -193,6 +194,12 @@ export default function App() {
     window.open(url, "_blank");
   };
 
+  const handleConnectLsaSpecialist = () => {
+    const text = encodeURIComponent("hola quiero comunicarme con la especialista");
+    const url = `https://wa.me/5493772631310?text=${text}`;
+    window.open(url, "_blank");
+  };
+
   return (
     <div className="min-h-screen bg-[#e0f2fe] p-2 sm:p-4 md:p-8 flex flex-col items-center justify-center font-sans selection:bg-sky-100 selection:text-sky-900">
       
@@ -282,6 +289,40 @@ export default function App() {
 
         {/* Form Body */}
         <main className="p-5 sm:p-8 bg-[#f8fafc]">
+          
+          {/* BOTÓN LSA DE ACCESIBILIDAD PARA PERSONAS SORDAS O HIPOACÚSICAS */}
+          <div className="bg-gradient-to-r from-sky-50 to-[#ecfdf5] border-4 border-[#25D366] p-4 rounded-2xl shadow-lg flex items-center justify-between gap-3 animate-colorful-pulse mb-6">
+            <div className="flex items-center gap-3">
+              {/* LSA custom emblem */}
+              <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-white rounded-full p-0.5 border-2 border-sky-300 shadow-md overflow-hidden flex items-center justify-center">
+                <img 
+                  src={lsaBadgeUrl} 
+                  alt="Accesibilidad LSA" 
+                  className="w-full h-full object-cover rounded-full"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              <div className="space-y-0.5 font-sans">
+                <h4 className="text-xs sm:text-sm font-black text-[#0369a1] uppercase tracking-wider flex items-center gap-1.5 leading-tight">
+                  👂 Comunicación LSA (Lengua de Señas)
+                </h4>
+                <p className="text-[10px] sm:text-xs text-[#0369a1] font-medium leading-snug">
+                  ¿Sos sordo/a o hipoacúsico/a? Chateá o hacé videollamada de señas con la especialista en Paso de los Libres.
+                </p>
+              </div>
+            </div>
+            
+            <button
+              type="button"
+              onClick={handleConnectLsaSpecialist}
+              className="bg-[#25D366] hover:bg-[#128C7E] active:scale-95 text-white font-black px-3.5 py-2.5 sm:px-4.5 sm:py-3 rounded-xl transition-all shadow flex items-center gap-1.5 text-xs shrink-0 cursor-pointer"
+            >
+              <span>CONECTAR</span>
+              <svg className="w-4 h-4 fill-white shrink-0" viewBox="0 0 24 24">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-11.507c-.124-.208-.464-.33-.978-.588s-3.033-1.494-3.502-1.658c-.469-.165-.812-.247-1.155.248-.343.495-1.328 1.658-1.628 2.01-.299.352-.601.397-1.115.139-.514-.258-2.172-.8-4.137-2.537-1.525-1.347-2.553-3.013-2.853-3.51-.3-.495-.03-.764.227-1.02.232-.23.515-.588.772-.88.258-.293.344-.502.515-.84.17-.338.086-.633-.043-.89-.129-.257-1.155-2.756-1.584-3.755-.418-1.01-.843-.873-1.155-.888-.299-.015-.644-.017-.988-.017s-.902.13-1.373.633c-.469.502-1.79 1.734-1.79 4.226s1.82 4.89 2.072 5.228c.252.338 3.582 5.42 8.68 7.595 1.214.517 2.16.825 2.898 1.054 1.22.385 2.33.33 3.207.2 1.05-.14 3.033-1.226 3.462-2.413.43-1.187.43-2.203.3-2.414z" />
+              </svg>
+            </button>
+          </div>
           
           {!showSuccess ? (
             <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
