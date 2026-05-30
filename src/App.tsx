@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import emailjs from "@emailjs/browser";
 import { 
@@ -40,15 +40,29 @@ const PROBLEM_TYPES = [
   "Otro Problema de Salud Pública"
 ];
 
-// Sound effect synthesizer functions using Web Audio API
+// Sound effect synthesizer functions using Web Audio API with near-zero latency context reuse
+let sharedAudioCtx: AudioContext | null = null;
+
+const getAudioContext = (): AudioContext | null => {
+  if (typeof window === "undefined") return null;
+  const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+  if (!AudioContextClass) return null;
+  if (!sharedAudioCtx) {
+    sharedAudioCtx = new AudioContextClass();
+  }
+  if (sharedAudioCtx.state === "suspended") {
+    sharedAudioCtx.resume().catch(() => {});
+  }
+  return sharedAudioCtx;
+};
+
 const playIntenseLsaSound = () => {
   try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
+    const ctx = getAudioContext();
+    if (!ctx) return;
     const now = ctx.currentTime;
     
-    // Play a high energy dual-tone synthesized sequence with exponential ramps
+    // Play a dual-tone synthesized sequence with exponential ramps and strong punch
     const playOsci = (freq: number, type: OscillatorType, startTime: number, duration: number, vol: number) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -58,7 +72,7 @@ const playIntenseLsaSound = () => {
       osc.frequency.exponentialRampToValueAtTime(freq * 1.25, startTime + duration);
       
       gain.gain.setValueAtTime(vol, startTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
       
       osc.connect(gain);
       gain.connect(ctx.destination);
@@ -67,15 +81,15 @@ const playIntenseLsaSound = () => {
       osc.stop(startTime + duration);
     };
     
-    // Vibrant arpeggio for high accessibility visibility: C5 -> E5 -> G5 -> C6
-    playOsci(523.25, "sine", now, 0.4, 0.15);       // C5
-    playOsci(659.25, "sine", now + 0.08, 0.4, 0.15);  // E5
-    playOsci(783.99, "sine", now + 0.16, 0.4, 0.15);  // G5
-    playOsci(1046.50, "sine", now + 0.24, 0.5, 0.20); // C6
+    // Vibrant intense arpeggio with high volume and presence for LSA visibility: C5 -> E5 -> G5 -> C6
+    playOsci(523.25, "sine", now, 0.45, 0.85);       // C5 (boosted)
+    playOsci(659.25, "sine", now + 0.06, 0.45, 0.85);  // E5 (boosted)
+    playOsci(783.99, "sine", now + 0.12, 0.45, 0.85);  // G5 (boosted)
+    playOsci(1046.50, "sine", now + 0.18, 0.55, 0.95); // C6 (boosted)
     
-    // Base undertone for thickness
-    playOsci(261.63, "triangle", now, 0.6, 0.12);     // C4
-    playOsci(392.00, "triangle", now + 0.12, 0.6, 0.10); // G4
+    // Base undertones for increased thickness/meatiness
+    playOsci(261.63, "triangle", now, 0.65, 0.75);     // C4 (boosted)
+    playOsci(392.00, "triangle", now + 0.08, 0.65, 0.70); // G4 (boosted)
   } catch (err) {
     console.warn("AudioContext not supported or gesture needed:", err);
   }
@@ -83,29 +97,56 @@ const playIntenseLsaSound = () => {
 
 const playStandardButtonSound = () => {
   try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
+    const ctx = getAudioContext();
+    if (!ctx) return;
     const now = ctx.currentTime;
     
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(600, now);
-    osc.frequency.exponentialRampToValueAtTime(300, now + 0.12);
-    
-    gain.gain.setValueAtTime(0.08, now);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
-    
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    
-    osc.start(now);
-    osc.stop(now + 0.12);
+    const playOsci = (freq: number, type: OscillatorType, duration: number, vol: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.7, now + duration);
+      
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.start(now);
+      osc.stop(now + duration);
+    };
+
+    // Immediate punchy sound combination: Sine + Triangle for maximum presence (boosted values to 0.9 / 0.8)
+    playOsci(720, "sine", 0.14, 0.90);
+    playOsci(360, "triangle", 0.14, 0.80);
   } catch (err) {
     console.warn("AudioContext not supported or gesture needed:", err);
   }
+};
+
+// Simple bold parser that replaces *text* or **text** with standard React strong elements
+const renderFormattedText = (text: string) => {
+  if (!text) return "";
+  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={i} className="font-extrabold text-[#0369a1] not-italic">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    } else if (part.startsWith("*") && part.endsWith("*")) {
+      return (
+        <strong key={i} className="font-extrabold text-[#0369a1] not-italic">
+          {part.slice(1, -1)}
+        </strong>
+      );
+    }
+    return part;
+  });
 };
 
 export default function App() {
@@ -113,6 +154,23 @@ export default function App() {
   const [viewMode, setViewMode] = useState<"movil" | "escritorio">("movil");
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const [isSubmitLoading, setIsSubmitLoading] = useState<boolean>(false);
+  const [currentTime, setCurrentTime] = useState<string>("");
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      let hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, "0");
+      const ampm = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12;
+      hours = hours ? hours : 12; // 0 should be 12
+      const strTime = `${String(hours).padStart(2, "0")}:${minutes} ${ampm} 🕒`;
+      setCurrentTime(strTime);
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Form selections and texts
   const [location, setLocation] = useState<"Hospital Público San José" | "CAPS" | "Otro">("Hospital Público San José");
@@ -318,7 +376,7 @@ export default function App() {
         {/* CELULAR DECORATIVE STATUS BAR */}
         {viewMode === "movil" && (
           <div className="bg-slate-900 text-white/95 text-[10px] font-mono px-6 py-2 flex justify-between items-center select-none border-b border-slate-850">
-            <span className="font-extrabold text-[#25D366]">12:30 PM 🕒</span>
+            <span className="font-extrabold text-[#25D366]">{currentTime || "12:30 PM 🕒"}</span>
             <div className="px-2 py-0.5 bg-slate-950 rounded-full text-[8px] font-bold text-white/40 uppercase tracking-widest">
               CELULAR
             </div>
@@ -361,8 +419,12 @@ export default function App() {
         {/* Form Body */}
         <main className="p-5 sm:p-8 bg-[#f8fafc]">
           
-          {/* BOTÓN LSA DE ACCESIBILIDAD PARA PERSONAS SORDAS O HIPOACÚSICAS */}
-          <div className="bg-gradient-to-r from-sky-50 to-[#ecfdf5] border-4 border-[#25D366] p-4 rounded-2xl shadow-lg flex items-center justify-between gap-3 animate-colorful-pulse mb-6">
+          {/* BOTÓN LSA DE ACCESIBILIDAD PARA PERSONAS SORDAS O HIPOACÚSICAS (TODO EL RECUADRO ES INTERACTIVO) */}
+          <button
+            type="button"
+            onClick={handleConnectLsaSpecialist}
+            className="w-full text-left bg-gradient-to-r from-sky-50 to-[#ecfdf5] border-4 border-[#25D366] p-4 rounded-2xl shadow-lg flex items-center justify-between gap-3 animate-colorful-pulse mb-6 active:scale-[0.99] transition-all hover:brightness-105 cursor-pointer focus:outline-none focus:ring-4 focus:ring-emerald-300"
+          >
             <div className="flex items-center gap-3">
               {/* LSA custom emblem */}
               <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-white rounded-full p-0.5 border-2 border-sky-300 shadow-md overflow-hidden flex items-center justify-center">
@@ -380,23 +442,19 @@ export default function App() {
                 <p className="text-[11px] sm:text-xs font-black text-[#15803d] leading-none mb-0.5">
                   ¿Sos una persona sorda o hipoacúsica?
                 </p>
-                <p className="text-[10px] sm:text-xs font-bold text-slate-700 leading-snug">
-                  📲 Chateá o realizá una videollamada en lengua de señas con una especialista en Paso de los Libres.
+                <p className="text-[10px] sm:text-xs font-semibold text-slate-700 leading-snug">
+                  Chateá o realizá una videollamada en lengua de señas con una especialista en Paso de los Libres.
                 </p>
               </div>
             </div>
             
-            <button
-              type="button"
-              onClick={handleConnectLsaSpecialist}
-              className="bg-[#25D366] hover:bg-[#128C7E] active:scale-95 text-white font-black px-3.5 py-2.5 sm:px-4.5 sm:py-3 rounded-xl transition-all shadow flex items-center gap-1.5 text-xs shrink-0 cursor-pointer"
-            >
+            <div className="bg-[#25D366] text-white font-black px-3.5 py-2.5 sm:px-4.5 sm:py-3 rounded-xl shadow flex items-center gap-1.5 text-xs shrink-0">
               <span>CONECTAR</span>
               <svg className="w-4 h-4 fill-white shrink-0" viewBox="0 0 24 24">
                 <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-11.507c-.124-.208-.464-.33-.978-.588s-3.033-1.494-3.502-1.658c-.469-.165-.812-.247-1.155.248-.343.495-1.328 1.658-1.628 2.01-.299.352-.601.397-1.115.139-.514-.258-2.172-.8-4.137-2.537-1.525-1.347-2.553-3.013-2.853-3.51-.3-.495-.03-.764.227-1.02.232-.23.515-.588.772-.88.258-.293.344-.502.515-.84.17-.338.086-.633-.043-.89-.129-.257-1.155-2.756-1.584-3.755-.418-1.01-.843-.873-1.155-.888-.299-.015-.644-.017-.988-.017s-.902.13-1.373.633c-.469.502-1.79 1.734-1.79 4.226s1.82 4.89 2.072 5.228c.252.338 3.582 5.42 8.68 7.595 1.214.517 2.16.825 2.898 1.054 1.22.385 2.33.33 3.207.2 1.05-.14 3.033-1.226 3.462-2.413.43-1.187.43-2.203.3-2.414z" />
               </svg>
-            </button>
-          </div>
+            </div>
+          </button>
           
           {!showSuccess ? (
             <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
@@ -583,6 +641,9 @@ export default function App() {
                   placeholder="Escribí de manera detallada lo que pasó. Ej: Vine al CAPS y me comunicaron que no hay remedios, tampoco hay pediatra..."
                   className="w-full bg-white border-2 border-[#bae6fd] p-4 text-base sm:text-lg rounded-xl focus:border-[#0284c7] focus:ring-4 focus:ring-sky-100 outline-none font-medium leading-relaxed text-[#0369a1] placeholder-[#0284c7]/40 resize-y"
                 ></textarea>
+                <p className="text-[10px] sm:text-xs text-slate-500 font-sans leading-relaxed flex items-center gap-1.5 mt-1 bg-sky-50/50 p-2 rounded-lg border border-sky-100/60">
+                  <span>💡 *Tip de Formato:* Podés escribir palabras entre asteriscos (ej: *pedido urgente*) para guardarlo y compartirlo en negrita.</span>
+                </p>
               </div>
 
               {/* =======================================================
@@ -668,7 +729,7 @@ export default function App() {
                 <div>
                   <span className="text-xs font-sans uppercase font-bold text-slate-400 block mb-1">Tu Mensaje:</span>
                   <div className="bg-[#f8fafc] p-3 rounded-xl border border-[#bae6fd] text-xs sm:text-sm text-[#0369a1] whitespace-pre-wrap max-h-40 overflow-y-auto leading-relaxed italic font-medium">
-                    {description}
+                    {renderFormattedText(description)}
                   </div>
                 </div>
               </div>
